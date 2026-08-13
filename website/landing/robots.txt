@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dsapp.sayall.app/sitemap.xml
