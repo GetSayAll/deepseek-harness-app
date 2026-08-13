@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-08-14-macos-v1-deep-ocean-workbench.md
+2026-08-14-macos-v1-deep-ocean-workbench.md: a6d2ac7d5d58c355a84122186fe2f3b042defdca
+2026-08-14-macos-v1-deep-ocean-workbench.zh.md: f9976c4c1f252492b26b2071f14a40c962e5052b
