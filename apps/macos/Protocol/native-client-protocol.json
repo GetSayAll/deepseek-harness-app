@@ -1,0 +1,21 @@
+{
+  "protocolVersion": 0,
+  "capabilities": [
+    "rpc.unary",
+    "rpc.respond",
+    "events.mux",
+    "events.host"
+  ],
+  "hostDescription": {
+    "required": {
+      "version": "String",
+      "cwd": "String",
+      "attachedSessions": "Int",
+      "canOpenPath": "Bool"
+    },
+    "optional": {
+      "provider": "String",
+      "model": "String"
+    }
+  }
+}

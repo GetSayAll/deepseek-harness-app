@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-13-native-macos-process-carrier.md
+2026-08-13-native-macos-process-carrier.md: 4cd34f4d7b37e6fbe388fc1ea68caa5ea9f66786
+2026-08-13-native-macos-process-carrier.zh.md: 9f24af9ec4186742a5f95d3b84e0b3f29cee31d6

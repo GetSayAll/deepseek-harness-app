@@ -24,6 +24,8 @@
 
 [`dsh-base`](../packages/bundle/base/README.md) 是每个 profile 的第一层：模型适配器、工具、持久化、沙箱与审批策略、设置、凭据、遥测。[`dsh-web-app`](../packages/bundle/web-app/README.md) 增加浏览器应用；[`dsh-headless`](../packages/bundle/headless/README.md) 增加一次性运行器，且完全不带服务器。
 
+[`apps/macos`](../apps/macos/README.md) 是原生 SwiftUI 应用。它保留 Web 组合中的 Host 侧条目，通过应用 overlay 禁用浏览器与服务器条目，并在不监听端口的情况下，经带版本的子进程通道承载标准 `ApiProxy` 消息。
+
 各层按此顺序应用在空条目列表之上：先按 profile 列出的顺序应用每个组合包，然后是 profile 的 `cordis.patch.yml`，然后是 home 级的那份，最后是任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
 
 要查看你的机器实际启动的配置树：

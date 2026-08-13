@@ -1,0 +1,33 @@
+{
+  "name": "@deepseek-ai/dsh-macos",
+  "description": "Native macOS application and its process-local Harness sidecar",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:host": "tsdown --config tsdown.config.ts && cp Host/native.overlay.yml lib/native.overlay.yml",
+    "generate": "tsx scripts/generate-swift-protocol.ts",
+    "package:app": "bash scripts/package_app.sh",
+    "package:dmg": "bash scripts/sign_and_package.sh",
+    "package:dmg:notarized": "bash scripts/sign_and_package.sh --notarize",
+    "test:host": "vitest run --config vitest.config.ts",
+    "test:swift": "swift test"
+  },
+  "files": [
+    "lib/*.js",
+    "lib/native.overlay.yml"
+  ],
+  "dependencies": {
+    "@deepseek-ai/dsh": "workspace:^",
+    "@deepseek-ai/dsh-app-boot": "workspace:^",
+    "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
+    "@deepseek-ai/dsh-host-directory-picker-native": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-session": "workspace:^",
+    "tsdown": "^0.22.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
