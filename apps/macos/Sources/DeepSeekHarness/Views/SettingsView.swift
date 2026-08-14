@@ -5,6 +5,7 @@ struct SettingsView: View {
         case models = "模型"
         case agents = "智能体预设"
         case plugins = "插件"
+        case updates = "更新"
         case general = "通用"
 
         var id: String { rawValue }
@@ -14,12 +15,14 @@ struct SettingsView: View {
             case .models: "cube"
             case .agents: "person"
             case .plugins: "puzzlepiece.extension"
+            case .updates: "arrow.triangle.2.circlepath"
             case .general: "gearshape"
             }
         }
     }
 
     let store: AppStore
+    @ObservedObject var updates: UpdateService
     @State private var selection: Section = .models
     @State private var apiKey = ""
     @State private var confirmsRemoval = false
@@ -99,9 +102,93 @@ struct SettingsView: View {
             FutureSettingsView(title: "智能体预设", description: "原生预设管理将在协议接入后提供。", symbol: "person.2")
         case .plugins:
             FutureSettingsView(title: "插件", description: "原生插件配置将在协议接入后提供。", symbol: "puzzlepiece.extension")
+        case .updates:
+            UpdateSettingsView(updates: updates)
         case .general:
             GeneralSettingsView(store: store)
         }
+    }
+}
+
+private struct UpdateSettingsView: View {
+    private let versionHistory = URL(string: "https://dsapp.sayall.app/version-history?from=mac-settings")!
+    @ObservedObject var updates: UpdateService
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("更新")
+                        .font(.system(size: 20, weight: .semibold))
+                    Text("每天自动检查一次；发现新版本后由你确认下载和安装。")
+                        .font(.system(size: 13))
+                        .foregroundStyle(DSTheme.textSecondary)
+                }
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundStyle(DSTheme.brandPrimary)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("DS Harness \(versionText)")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text(updates.isConfigured ? updates.channelLabel : "开发构建未配置更新签名")
+                                .font(.system(size: 12))
+                                .foregroundStyle(DSTheme.textSecondary)
+                        }
+                        Spacer()
+                        Button("检查更新…") {
+                            updates.checkForUpdates()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DSTheme.brandPrimary)
+                        .disabled(!updates.canCheckForUpdates)
+                    }
+                    .padding(18)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("接收预览版更新", isOn: $updates.checksForPreviewUpdates)
+                            .disabled(!updates.isConfigured)
+                        Text("关闭时只接收正式版；开启后，自动检查和手动检查也会包含最新预览版。预览版可能包含尚未完成充分验证的功能。")
+                            .font(.system(size: 12))
+                            .foregroundStyle(DSTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(18)
+
+                    Divider()
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("更新内容")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("发现新版本时，更新窗口会显示该版本的发布说明。")
+                                .font(.system(size: 12))
+                                .foregroundStyle(DSTheme.textSecondary)
+                        }
+                        Spacer()
+                        Link("查看版本历史", destination: versionHistory)
+                    }
+                    .padding(18)
+                }
+                .dsCard()
+            }
+            .padding(.horizontal, 40)
+            .padding(.vertical, 32)
+            .frame(maxWidth: 760, alignment: .leading)
+        }
+        .background(DSTheme.backgroundBase)
+    }
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.1"
+        guard let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String else {
+            return version
+        }
+        return "\(version)（\(build)）"
     }
 }
 

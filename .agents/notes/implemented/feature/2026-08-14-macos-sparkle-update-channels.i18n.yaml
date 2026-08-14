@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-14-macos-sparkle-update-channels.md
+2026-08-14-macos-sparkle-update-channels.md: 16890a222ee0eb29dd5040dd77dce2c0d2e3859c
+2026-08-14-macos-sparkle-update-channels.zh.md: 3393c18623f41dc267350a1d95496b5f8edfb5d3

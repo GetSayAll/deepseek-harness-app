@@ -6,6 +6,7 @@ import UserNotifications
 struct DeepSeekHarnessApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var store = AppStore()
+    @StateObject private var updates = UpdateService()
 
     var body: some Scene {
         WindowGroup("DS Harness", id: "main") {
@@ -14,6 +15,7 @@ struct DeepSeekHarnessApp: App {
                 .task {
                     appDelegate.stopApplication = { await store.stop() }
                     appDelegate.openSession = { sessionId in await store.selectSession(sessionId) }
+                    updates.start()
                     await store.start()
                 }
         }
@@ -31,9 +33,14 @@ struct DeepSeekHarnessApp: App {
                 .keyboardShortcut("o", modifiers: [.command, .shift])
             }
             CommandGroup(replacing: .appInfo) {
-                AboutLink()
+                AboutLink(updates: updates)
             }
             CommandGroup(after: .appInfo) {
+                Button("检查更新…") {
+                    updates.checkForUpdates()
+                }
+                .disabled(!updates.canCheckForUpdates)
+
                 Button("重新连接 Host") {
                     Task { await store.restart() }
                 }
@@ -42,13 +49,13 @@ struct DeepSeekHarnessApp: App {
         }
 
         Window("关于 DS Harness", id: "about") {
-            AboutView()
+            AboutView(updates: updates)
         }
-        .defaultSize(width: 420, height: 360)
+        .defaultSize(width: 440, height: 420)
         .windowResizability(.contentSize)
 
         Settings {
-            SettingsView(store: store)
+            SettingsView(store: store, updates: updates)
                 .frame(minWidth: 760, minHeight: 560)
         }
         .defaultSize(width: 920, height: 700)
@@ -57,6 +64,7 @@ struct DeepSeekHarnessApp: App {
 
 private struct AboutLink: View {
     @Environment(\.openWindow) private var openWindow
+    @ObservedObject var updates: UpdateService
 
     var body: some View {
         Button("关于 DS Harness") {

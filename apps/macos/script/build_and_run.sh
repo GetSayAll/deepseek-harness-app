@@ -13,6 +13,7 @@ DIST_DIR="$APP_ROOT/dist"
 APP_BUNDLE="$DIST_DIR/$APP_DISPLAY_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
@@ -26,12 +27,17 @@ fi
 
 cd "$APP_ROOT"
 swift build
-BUILD_BINARY="$(swift build --show-bin-path)/$EXECUTABLE_NAME"
+BUILD_BIN_DIR="$(swift build --show-bin-path)"
+BUILD_BINARY="$BUILD_BIN_DIR/$EXECUTABLE_NAME"
+SPARKLE_FRAMEWORK="$BUILD_BIN_DIR/Sparkle.framework"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS"
+mkdir -p "$APP_MACOS" "$APP_FRAMEWORKS"
 cp "$BUILD_BINARY" "$APP_BINARY"
+install_name_tool -add_rpath @executable_path/../Frameworks "$APP_BINARY"
 chmod +x "$APP_BINARY"
+ditto --norsrc --noextattr --noqtn --noacl \
+  "$SPARKLE_FRAMEWORK" "$APP_FRAMEWORKS/Sparkle.framework"
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
