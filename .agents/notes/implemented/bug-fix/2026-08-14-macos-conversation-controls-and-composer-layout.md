@@ -14,6 +14,8 @@ The title is plain text without a disclosure affordance. The conversation header
 
 The macOS client reads `agentPreset.list`, displays the selected session preset in a menu, and applies `agentPreset.select` only while the session is blank. A started session still opens the menu, but its choices are disabled and the menu states that the preset is locked. The client uses the Host's existing roster and selection methods; it adds no macOS-specific preset source or protocol method.
 
+After `agentPreset.select` returns, the client resolves the target session again by its opaque id before updating the local summary. A concurrent session-list refresh, reorder, or removal therefore cannot redirect the accepted preset to another session through a stale array index.
+
 User messages render the name, bubble, and avatar as one trailing group. Assistant messages retain the leading avatar and full-width body.
 
 The composer has a persisted height with a 116-point default and a 104-to-300-point range. A top drag handle changes that height while the composer remains anchored at the bottom. The send action remains disabled for an empty trimmed draft and continues to use the existing send/cancel path.
@@ -32,4 +34,4 @@ The macOS connection sequence now requires the bundled Host's existing `agentPre
 
 The trace tab is a tool-focused projection of the same conversation, not a second event store. Selecting a tool there continues to open the existing details panel. Composer height persists across launches under the app's preferences and remains bounded so it cannot cover the conversation or collapse the controls.
 
-`swift test --package-path apps/macos` covers the complete macOS package and real sidecar handshake. A foreground app pass verifies the compact default composer and both drag directions; the development bundle requires an ad-hoc signature after its existing run script mutates the binary.
+`swift test --package-path apps/macos` covers the complete macOS package, real sidecar handshake, and id-based preset update after session-list changes. A foreground app pass verifies the compact default composer and both drag directions; the development bundle requires an ad-hoc signature after its existing run script mutates the binary.

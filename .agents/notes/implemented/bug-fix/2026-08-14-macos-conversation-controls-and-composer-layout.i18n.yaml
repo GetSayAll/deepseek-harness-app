@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-14-macos-conversation-controls-and-composer-layout.md
-2026-08-14-macos-conversation-controls-and-composer-layout.md: 80b011ad37a2cc1ff2854cde098bc777391b65ef
-2026-08-14-macos-conversation-controls-and-composer-layout.zh.md: cb4f33fb91d1e718702ad489dd3546edcbb1d509
+2026-08-14-macos-conversation-controls-and-composer-layout.md: 510f59792a792d051ca439b7018a275463ad6585
+2026-08-14-macos-conversation-controls-and-composer-layout.zh.md: dfda7790b7f40351bb7e1bee4ad67330fe9fce6d

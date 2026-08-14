@@ -314,19 +314,28 @@ final class AppStore {
                 payload: AgentPresetSelectPayload(sessionId: selectedSessionId, agentPreset: agentPreset),
                 as: AgentPresetSelectValue.self
             )
-            let summary = sessions[index]
-            sessions[index] = SessionSummary(
-                sessionId: summary.sessionId,
-                updatedAt: summary.updatedAt,
-                running: summary.running,
-                blank: summary.blank,
-                cwd: summary.cwd,
-                agentPreset: value.agentPreset,
-                projections: summary.projections
-            )
+            Self.applyAgentPreset(value.agentPreset, to: &sessions, sessionId: selectedSessionId)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    nonisolated static func applyAgentPreset(
+        _ agentPreset: String,
+        to sessions: inout [SessionSummary],
+        sessionId: String
+    ) {
+        guard let index = sessions.firstIndex(where: { $0.sessionId == sessionId }) else { return }
+        let summary = sessions[index]
+        sessions[index] = SessionSummary(
+            sessionId: summary.sessionId,
+            updatedAt: summary.updatedAt,
+            running: summary.running,
+            blank: summary.blank,
+            cwd: summary.cwd,
+            agentPreset: agentPreset,
+            projections: summary.projections
+        )
     }
 
     func answerApproval(_ approval: PendingApproval, outcome: String) async {
