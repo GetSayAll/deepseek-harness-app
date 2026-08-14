@@ -30,7 +30,7 @@ arm64 release 应用包为 `DS Harness.app`，bundle identifier 是 `app.sayall.
 
 ## 原生客户端与 Web 客户端
 
-两个客户端使用相同的 Harness 工作区、会话、对话、工具、审批和结构化问答语义。原生客户端把 Node 与 Host 打包在应用内，通过 stdio 传输 RPC 和事件，通过只写 credentials API 存储 DeepSeek 凭据，并在不依赖浏览器或 localhost 服务的情况下提供 macOS 窗口、菜单、快捷键、目录选择和辅助功能行为。
+两个客户端使用相同的 Harness 工作区、会话、对话、工具、审批和结构化问答语义。原生客户端把 Node 与 Host 打包在应用内，通过 stdio 传输 RPC 和事件，通过只写 credentials API 存储 DeepSeek 凭据，并在不依赖浏览器或 localhost 服务的情况下提供 macOS 窗口、菜单、快捷键、目录选择、辅助功能行为、Dock 徽标和系统通知。通知覆盖轮次结束、审批请求与结构化问答，不包含对话内容，并在点击后打开对应会话。应用只会在第一条符合条件的提醒准备投递时请求通知授权；它不会增加相机、麦克风、屏幕录制、辅助功能或自动化 entitlement。
 
 Web 客户端仍是完整产品界面。原生 `0.1.1` 尚未显示运行轨迹检查、计划审阅、目标与后台任务、预设与插件管理、模型目录或子智能体导航，因为原生协议尚未提供这些结构化数据。它当前也只面向 Apple Silicon 和已验收的浅色外观，而 Web 客户端覆盖浏览器平台及其既有外观模式。未知工具 presentation 仍可通过原生通用工具卡使用，但 Web 专属可执行 UI 不能穿过原生插件协议。
 

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct DeepSeekHarnessApp: App {
@@ -12,6 +13,7 @@ struct DeepSeekHarnessApp: App {
                 .frame(minWidth: 900, minHeight: 600)
                 .task {
                     appDelegate.stopApplication = { await store.stop() }
+                    appDelegate.openSession = { sessionId in await store.selectSession(sessionId) }
                     await store.start()
                 }
         }
@@ -64,23 +66,24 @@ private struct AboutLink: View {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     var stopApplication: (() async -> Void)?
+    var openSession: ((String) async -> Void)? {
+        didSet { openPendingSessionIfPossible() }
+    }
+    private var pendingSessionId: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
-            if !Self.hasVisibleMainWindow(in: NSApp.windows) {
-                NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
-            }
+            self.presentMainWindow()
         }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !Self.hasVisibleMainWindow(in: sender.windows) {
-            NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
-        }
+        presentMainWindow()
         return true
     }
 
@@ -101,5 +104,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        pendingSessionId = response.notification.request.content.userInfo["sessionId"] as? String
+        center.removeDeliveredNotifications(withIdentifiers: [response.notification.request.identifier])
+        presentMainWindow()
+        openPendingSessionIfPossible()
+        completionHandler()
+    }
+
+    private func presentMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first(where: {
+            Self.isVisibleMainWindow(identifier: $0.identifier?.rawValue, visible: $0.isVisible)
+        }) {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
+        }
+    }
+
+    private func openPendingSessionIfPossible() {
+        guard let pendingSessionId, let openSession else { return }
+        self.pendingSessionId = nil
+        Task { await openSession(pendingSessionId) }
     }
 }
