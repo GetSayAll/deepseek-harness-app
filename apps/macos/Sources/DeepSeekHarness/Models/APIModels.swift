@@ -28,6 +28,7 @@ struct SessionSummary: Decodable, Identifiable, Sendable {
     let running: Bool
     let blank: Bool
     let cwd: String?
+    let agentPreset: String?
     let projections: Projections?
 
     var id: String { sessionId }
@@ -46,6 +47,29 @@ struct SessionCreatePayload: Encodable, Sendable {
 
 struct SessionCreateValue: Decodable, Sendable {
     let sessionId: String
+}
+
+struct AgentPresetEntry: Decodable, Identifiable, Sendable {
+    let id: String
+    let isDefault: Bool
+    let name: String?
+    let description: String?
+    let broken: String?
+
+    var displayName: String { name ?? id }
+}
+
+struct AgentPresetListValue: Decodable, Sendable {
+    let presets: [AgentPresetEntry]
+}
+
+struct AgentPresetSelectPayload: Encodable, Sendable {
+    let sessionId: String
+    let agentPreset: String
+}
+
+struct AgentPresetSelectValue: Decodable, Sendable {
+    let agentPreset: String
 }
 
 struct SessionHistoryPayload: Encodable, Sendable {

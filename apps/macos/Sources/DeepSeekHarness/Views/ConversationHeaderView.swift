@@ -1,7 +1,13 @@
 import SwiftUI
 
+enum ConversationSection: Hashable {
+    case dialogue
+    case trace
+}
+
 struct ConversationHeaderView: View {
     let store: AppStore
+    @Binding var selection: ConversationSection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -11,9 +17,6 @@ struct ConversationHeaderView: View {
                     .foregroundStyle(DSTheme.textPrimary)
                     .lineLimit(1)
                     .help(store.selectedSession?.title ?? "新会话")
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(DSTheme.textSecondary)
                 Spacer()
                 Button {
                     if store.selectedTool != nil { store.selectTool(nil) }
@@ -27,16 +30,8 @@ struct ConversationHeaderView: View {
             }
 
             HStack(spacing: 28) {
-                Text("对话")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(DSTheme.textPrimary)
-                    .overlay(alignment: .bottom) {
-                        Rectangle().fill(DSTheme.brandPrimary).frame(height: 2).offset(y: 11)
-                    }
-                Text("运行轨迹")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(DSTheme.textSecondary)
-                    .help("原生轨迹协议接入后可用")
+                tab("对话", section: .dialogue)
+                tab("运行轨迹", section: .trace)
             }
         }
         .padding(.horizontal, 28)
@@ -44,5 +39,21 @@ struct ConversationHeaderView: View {
         .padding(.bottom, 12)
         .background(DSTheme.backgroundBase)
         .overlay(alignment: .bottom) { Divider().padding(.horizontal, 28) }
+    }
+
+    private func tab(_ title: String, section: ConversationSection) -> some View {
+        Button { selection = section } label: {
+            Text(title)
+                .font(.system(size: 14, weight: selection == section ? .semibold : .medium))
+                .foregroundStyle(selection == section ? DSTheme.textPrimary : DSTheme.textSecondary)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+                .overlay(alignment: .bottom) {
+                    if selection == section {
+                        Rectangle().fill(DSTheme.brandPrimary).frame(height: 2).offset(y: 11)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
     }
 }

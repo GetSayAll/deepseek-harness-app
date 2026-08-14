@@ -36,12 +36,14 @@ final class AppStore {
     var workspaces: [Workspace] = []
     var preferredWorkspaceId: String?
     var sessions: [SessionSummary] = []
+    var agentPresets: [AgentPresetEntry] = []
     var selectedSessionId: String?
     var conversation: [ConversationItem] = []
     var pendingInteractions: [PendingInteraction] = []
     var selectedToolId: String?
     var draft = ""
     var isSending = false
+    var isAgentPresetSaving = false
     var isCredentialSaving = false
     var errorMessage: String?
 
@@ -51,6 +53,15 @@ final class AppStore {
 
     var selectedPendingInteraction: PendingInteraction? {
         pendingInteractions.first { $0.sessionId == selectedSessionId }
+    }
+
+    var selectedAgentPresetId: String? {
+        selectedSession?.agentPreset ?? agentPresets.first(where: \.isDefault)?.id
+    }
+
+    var selectedAgentPresetTitle: String {
+        guard let selectedAgentPresetId else { return "通用助手" }
+        return agentPresets.first { $0.id == selectedAgentPresetId }?.displayName ?? selectedAgentPresetId
     }
 
     var selectedTool: ToolCard? {
@@ -115,14 +126,20 @@ final class AppStore {
                 payload: EmptyPayload(),
                 as: SessionListValue.self
             )
+            async let agentPresetList = host.request(
+                method: "agentPreset.list",
+                payload: EmptyPayload(),
+                as: AgentPresetListValue.self
+            )
             async let credentialDescription = host.request(
                 method: "credentials.describe",
                 payload: CredentialDescribePayload(refs: [Self.deepSeekCredentialRef]),
                 as: CredentialDescribeValue.self
             )
-            let (workspaceValue, sessionValue, credentialValue) = try await (
+            let (workspaceValue, sessionValue, presetValue, credentialValue) = try await (
                 workspaceList,
                 sessionList,
+                agentPresetList,
                 credentialDescription
             )
             workspaces = workspaceValue.items
@@ -130,6 +147,7 @@ final class AppStore {
                 preferredWorkspaceId = workspaces.first?.workspaceId
             }
             sessions = sessionValue.items.filter { !$0.blank }
+            agentPresets = presetValue.presets
             deepSeekCredential = credentialValue.credentials[Self.deepSeekCredentialRef]
             selectedSessionId = selectedSessionId ?? sessions.first?.sessionId
             if let selectedSessionId { try await loadHistory(sessionId: selectedSessionId) }
@@ -281,6 +299,36 @@ final class AppStore {
         selectedToolId = tool?.id
     }
 
+    func selectAgentPreset(_ agentPreset: String) async {
+        guard let selectedSessionId,
+              let index = sessions.firstIndex(where: { $0.sessionId == selectedSessionId }),
+              sessions[index].blank else {
+            errorMessage = "会话开始后不能更换助手。"
+            return
+        }
+        isAgentPresetSaving = true
+        defer { isAgentPresetSaving = false }
+        do {
+            let value = try await host.request(
+                method: "agentPreset.select",
+                payload: AgentPresetSelectPayload(sessionId: selectedSessionId, agentPreset: agentPreset),
+                as: AgentPresetSelectValue.self
+            )
+            let summary = sessions[index]
+            sessions[index] = SessionSummary(
+                sessionId: summary.sessionId,
+                updatedAt: summary.updatedAt,
+                running: summary.running,
+                blank: summary.blank,
+                cwd: summary.cwd,
+                agentPreset: value.agentPreset,
+                projections: summary.projections
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func answerApproval(_ approval: PendingApproval, outcome: String) async {
         do {
             try await host.respond(
@@ -376,6 +424,7 @@ final class AppStore {
                     running: running,
                     blank: summary.blank,
                     cwd: summary.cwd,
+                    agentPreset: summary.agentPreset,
                     projections: summary.projections
                 )
             }

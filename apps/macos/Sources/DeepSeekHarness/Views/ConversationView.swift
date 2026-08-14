@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ConversationView: View {
     let store: AppStore
+    @State private var section: ConversationSection = .dialogue
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,23 +18,32 @@ struct ConversationView: View {
                     Spacer(minLength: 84)
                 }
             } else {
-                ConversationHeaderView(store: store)
+                ConversationHeaderView(store: store, selection: $section)
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 22) {
-                            ForEach(store.conversation) { item in
-                                ConversationItemView(store: store, item: item).id(item.id)
+                if section == .trace, visibleConversation.isEmpty {
+                    ContentUnavailableView(
+                        "暂无运行轨迹",
+                        systemImage: "list.bullet.rectangle",
+                        description: Text("工具开始运行后会显示在这里。")
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 22) {
+                                ForEach(visibleConversation) { item in
+                                    ConversationItemView(store: store, item: item).id(item.id)
+                                }
                             }
+                            .frame(maxWidth: DSTheme.contentMaximum)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 20)
                         }
-                        .frame(maxWidth: DSTheme.contentMaximum)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 20)
-                    }
-                    .onChange(of: store.conversation) { _, conversation in
-                        guard let id = conversation.last?.id else { return }
-                        withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(id, anchor: .bottom) }
+                        .onChange(of: store.conversation) { _, _ in
+                            guard let id = visibleConversation.last?.id else { return }
+                            withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(id, anchor: .bottom) }
+                        }
                     }
                 }
 
@@ -41,6 +51,14 @@ struct ConversationView: View {
             }
         }
         .background(DSTheme.backgroundBase)
+    }
+
+    private var visibleConversation: [ConversationItem] {
+        guard section == .trace else { return store.conversation }
+        return store.conversation.filter {
+            if case .tool = $0 { return true }
+            return false
+        }
     }
 }
 
@@ -163,27 +181,39 @@ private struct MessageView: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            avatar
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
-                Text(message.role == .assistant ? "DS Harness" : "你")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(message.role == .assistant ? DSTheme.textPrimary : DSTheme.textSecondary)
-                Text(markdown)
-                    .font(.system(size: 15))
-                    .foregroundStyle(DSTheme.textPrimary)
-                    .textSelection(.enabled)
-                    .lineSpacing(5)
-                    .padding(message.role == .user ? 12 : 0)
-                    .background(message.role == .user ? DSTheme.selectionFill : .clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: .leading)
-                if message.streaming {
-                    ProgressView().controlSize(.small).tint(DSTheme.brandHighlight)
-                }
+        if message.role == .user {
+            HStack(alignment: .top, spacing: 12) {
+                Spacer(minLength: 72)
+                messageBody
+                avatar
             }
-            .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                avatar
+                messageBody
+            }
         }
+    }
+
+    private var messageBody: some View {
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
+            Text(message.role == .assistant ? "DS Harness" : "你")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(message.role == .assistant ? DSTheme.textPrimary : DSTheme.textSecondary)
+            Text(markdown)
+                .font(.system(size: 15))
+                .foregroundStyle(DSTheme.textPrimary)
+                .textSelection(.enabled)
+                .lineSpacing(5)
+                .padding(message.role == .user ? 12 : 0)
+                .background(message.role == .user ? DSTheme.selectionFill : .clear)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: .leading)
+            if message.streaming {
+                ProgressView().controlSize(.small).tint(DSTheme.brandHighlight)
+            }
+        }
+        .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: message.role == .user ? .trailing : .leading)
     }
 
     @ViewBuilder
