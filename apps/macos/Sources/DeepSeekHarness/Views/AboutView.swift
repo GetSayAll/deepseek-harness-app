@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AboutView: View {
     private let website = URL(string: "https://dsapp.sayall.app?from=mac")!
+    private let versionHistory = URL(string: "https://dsapp.sayall.app/version-history?from=mac")!
+    @ObservedObject var updates: UpdateService
 
     var body: some View {
         VStack(spacing: 16) {
@@ -20,10 +22,20 @@ struct AboutView: View {
             Text("DeepSeek Harness 的原生 macOS 客户端")
                 .foregroundStyle(.secondary)
 
+            HStack(spacing: 12) {
+                Button("检查更新…") {
+                    updates.checkForUpdates()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!updates.canCheckForUpdates)
+
+                Link("版本历史", destination: versionHistory)
+            }
+
             Link("访问 DS Harness 官网", destination: website)
         }
         .padding(32)
-        .frame(width: 420, height: 360)
+        .frame(width: 440, height: 420)
     }
 
     private var version: String {

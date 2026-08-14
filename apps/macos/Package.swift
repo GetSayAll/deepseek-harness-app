@@ -9,11 +9,17 @@ let package = Package(
         .executable(name: "DeepSeekHarness", targets: ["DeepSeekHarness"]),
         .library(name: "DshNativeProtocol", targets: ["DshNativeProtocol"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.4"),
+    ],
     targets: [
         .target(name: "DshNativeProtocol"),
         .executableTarget(
             name: "DeepSeekHarness",
-            dependencies: ["DshNativeProtocol"]
+            dependencies: [
+                "DshNativeProtocol",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ]
         ),
         .testTarget(
             name: "DshNativeProtocolTests",

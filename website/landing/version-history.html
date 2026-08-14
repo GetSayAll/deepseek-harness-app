@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#02070d">
+    <meta name="description" content="查看 DS Harness App 正式版与仍可下载预览版的版本历史和更新内容。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="DS Harness App">
+    <meta property="og:title" content="版本历史 — DS Harness App">
+    <meta property="og:description" content="DS Harness App 的版本记录、更新内容与下载入口。">
+    <meta property="og:url" content="https://dsapp.sayall.app/version-history">
+    <meta property="og:image" content="https://dsapp.sayall.app/og.png">
+    <link rel="canonical" href="https://dsapp.sayall.app/version-history">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+    <title>版本历史 — DS Harness App</title>
+  </head>
+  <body class="history-page">
+    <a class="skip-link" href="#main">跳至主要内容</a>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="DS Harness App 首页">
+        <span class="brand-mark" aria-hidden="true"><span>D</span><span>S</span></span>
+        <span>DS Harness App</span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span class="sr-only">打开导航</span>
+        <span></span><span></span>
+      </button>
+      <nav id="site-nav" class="site-nav" aria-label="主导航">
+        <a href="/">首页</a>
+        <a href="https://github.com/GetSayAll/deepseek-harness-app/releases/download/v0.1.1/DS-Harness-0.1.1-arm64.dmg">下载</a>
+        <a href="/version-history" aria-current="page">版本历史</a>
+      </nav>
+      <div class="header-actions">
+        <span class="build-status"><span aria-hidden="true"></span>0.1.1 已发布</span>
+        <a class="github-link" href="https://github.com/GetSayAll/deepseek-harness-app" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main id="main" class="history-main">
+      <section class="history-hero">
+        <p class="section-index">DS Harness App</p>
+        <h1>版本历史</h1>
+        <p>这里列出仍可下载的正式版和预览版，并保留每个版本的更新内容与下载入口。已撤回或无法下载的版本不会保留在列表中。</p>
+      </section>
+
+      <section class="release-list" aria-label="版本列表">
+        <article class="release-entry">
+          <header>
+            <div>
+              <p class="release-date">2026 年 8 月 14 日</p>
+              <h2>DS Harness 0.1.1</h2>
+            </div>
+            <span class="release-channel">正式版</span>
+          </header>
+          <p>首个原生 macOS 版本，采用 SwiftUI“深海工作台”三栏界面，并只在桌面生命周期与系统能力处使用 AppKit。</p>
+          <ul>
+            <li>内置 Node 运行时与 Harness Host，不需要 localhost 或额外运行环境。</li>
+            <li>提供原生工作区、会话、流式对话与 Markdown 阅读体验。</li>
+            <li>显示工具调用与运行详情，并支持审批和结构化问答。</li>
+            <li>DeepSeek API Key 通过只写凭据接口保存，界面不会读取或回显密钥。</li>
+            <li>支持 Host 断线恢复、原生设置、关于窗口与常用快捷键。</li>
+          </ul>
+          <div class="release-actions">
+            <a class="button button-primary" href="https://github.com/GetSayAll/deepseek-harness-app/releases/download/v0.1.1/DS-Harness-0.1.1-arm64.dmg">下载 DMG <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="https://github.com/GetSayAll/deepseek-harness-app/releases/tag/v0.1.1" target="_blank" rel="noreferrer">GitHub Release <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="release-requirement">Apple Silicon · macOS 14 或更高版本</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="/"><span class="brand-mark small" aria-hidden="true"><span>D</span><span>S</span></span><span>DS Harness App</span></a>
+      <p>正式版与预览版版本记录</p>
+      <nav aria-label="页脚导航"><a href="/">首页</a><a href="https://github.com/GetSayAll/deepseek-harness-app/releases/download/v0.1.1/DS-Harness-0.1.1-arm64.dmg">下载</a><a href="https://github.com/GetSayAll/deepseek-harness-app" target="_blank" rel="noreferrer">GitHub ↗</a></nav>
+    </footer>
+
+    <script src="/script.js" defer></script>
+  </body>
+</html>

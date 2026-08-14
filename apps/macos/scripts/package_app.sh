@@ -8,6 +8,8 @@ APP_VERSION="${APP_VERSION:-0.1.1}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 MIN_SYSTEM_VERSION="14.0"
 NODE_VERSION="${NODE_VERSION:-v24.19.0}"
+SPARKLE_PUBLIC_ED_KEY="${SPARKLE_PUBLIC_ED_KEY:?Set SPARKLE_PUBLIC_ED_KEY to the Sparkle Ed25519 public key}"
+SPARKLE_FEED_URL="https://github.com/GetSayAll/deepseek-harness-app/releases/latest/download/appcast.xml"
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPOSITORY_ROOT="$(cd "$APP_ROOT/../.." && pwd)"
@@ -15,6 +17,7 @@ DIST_DIR="$APP_ROOT/dist"
 APP_BUNDLE="$DIST_DIR/$APP_DISPLAY_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 RUNTIME_ROOT="$APP_RESOURCES/runtime"
 RUNTIME_APP="$RUNTIME_ROOT/app"
@@ -59,13 +62,22 @@ pnpm "${PNPM_REPOSITORY_ARGS[@]}" --filter @deepseek-ai/dsh-macos run build:host
 
 cd "$APP_ROOT"
 swift build -c release
-BUILD_BINARY="$(swift build -c release --show-bin-path)/$EXECUTABLE_NAME"
+BUILD_BIN_DIR="$(swift build -c release --show-bin-path)"
+BUILD_BINARY="$BUILD_BIN_DIR/$EXECUTABLE_NAME"
+SPARKLE_FRAMEWORK="$BUILD_BIN_DIR/Sparkle.framework"
+if [[ ! -d "$SPARKLE_FRAMEWORK" ]]; then
+  echo "missing Sparkle framework: $SPARKLE_FRAMEWORK" >&2
+  exit 1
+fi
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS" "$RUNTIME_APP" "$NODE_CACHE"
+mkdir -p "$APP_MACOS" "$APP_FRAMEWORKS" "$RUNTIME_APP" "$NODE_CACHE"
 cp "$BUILD_BINARY" "$APP_MACOS/$EXECUTABLE_NAME"
 strip -S -x "$APP_MACOS/$EXECUTABLE_NAME"
+install_name_tool -add_rpath @executable_path/../Frameworks "$APP_MACOS/$EXECUTABLE_NAME"
 chmod +x "$APP_MACOS/$EXECUTABLE_NAME"
+ditto --norsrc --noextattr --noqtn --noacl \
+  "$SPARKLE_FRAMEWORK" "$APP_FRAMEWORKS/Sparkle.framework"
 
 ICONSET="$(mktemp -d "${TMPDIR:-/tmp}/dsh-app-icon.XXXXXX")/AppIcon.iconset"
 mkdir -p "$ICONSET"
@@ -138,6 +150,18 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>SUAllowsAutomaticUpdates</key>
+  <false/>
+  <key>SUAutomaticallyUpdate</key>
+  <false/>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUFeedURL</key>
+  <string>$SPARKLE_FEED_URL</string>
+  <key>SUPublicEDKey</key>
+  <string>$SPARKLE_PUBLIC_ED_KEY</string>
+  <key>SUScheduledCheckInterval</key>
+  <integer>86400</integer>
 </dict>
 </plist>
 PLIST
@@ -164,8 +188,24 @@ if [[ -n "$(rg -a -l -F "$REPOSITORY_ROOT" "$APP_BUNDLE")" ]]; then
   echo "packaged application contains an absolute repository path" >&2
   exit 1
 fi
-if find "$APP_BUNDLE" -type l -print -quit | grep -q .; then
-  echo "packaged application contains symbolic links" >&2
+if find "$APP_BUNDLE" -type l ! -path "$APP_FRAMEWORKS/Sparkle.framework/*" -print -quit | grep -q .; then
+  echo "packaged application contains a symbolic link outside Sparkle.framework" >&2
+  exit 1
+fi
+SPARKLE_VERSION_DIR="$APP_FRAMEWORKS/Sparkle.framework/Versions/B"
+for executable in \
+  "$SPARKLE_VERSION_DIR/Sparkle" \
+  "$SPARKLE_VERSION_DIR/Autoupdate" \
+  "$SPARKLE_VERSION_DIR/Updater.app/Contents/MacOS/Updater" \
+  "$SPARKLE_VERSION_DIR/XPCServices/Installer.xpc/Contents/MacOS/Installer" \
+  "$SPARKLE_VERSION_DIR/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"; do
+  if [[ ! -x "$executable" ]]; then
+    echo "packaged Sparkle executable is missing or not executable: $executable" >&2
+    exit 1
+  fi
+done
+if [[ ! -L "$APP_FRAMEWORKS/Sparkle.framework/Versions/Current" ]]; then
+  echo "packaged Sparkle framework is missing Versions/Current symlink" >&2
   exit 1
 fi
 if find "$RUNTIME_APP" -type f -links +1 -print -quit | grep -q .; then

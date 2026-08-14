@@ -15,16 +15,18 @@ pnpm --filter @deepseek-ai/dsh-macos run generate
 pnpm --filter @deepseek-ai/dsh-macos run test:host
 cd apps/macos && swift test
 ./script/build_and_run.sh --verify
-./script/build_and_run.sh --package
+SPARKLE_PUBLIC_ED_KEY='<public-key>' ./script/build_and_run.sh --package
 ```
 
-普通运行模式会组装 `dist/DS Harness.app`，并以前台开发应用方式启动。只有设置仓库覆盖路径后，`DSH_MACOS_REPOSITORY_ROOT` 与 `DSH_NODE_PATH` 才会选择源码 sidecar 和开发用 Node 可执行文件。
+普通运行模式会组装 `dist/DS Harness.app`，并以前台开发应用方式启动。只有设置仓库覆盖路径后，`DSH_MACOS_REPOSITORY_ROOT` 与 `DSH_NODE_PATH` 才会选择源码 sidecar 和开发用 Node 可执行文件。开发 bundle 不包含 Sparkle feed 元数据，因此更新控件保持停用，源码调试也不需要发布凭据。
 
-打包模式会构建 release Swift 可执行文件和已编译 sidecar、以复制方式部署生产依赖、依据每个包的发布文件清单补齐缺失的内部 workspace 依赖、移除原生 overlay 已禁用的浏览器入口、验证官方 Node 压缩包校验和，并在 `Contents/Resources/runtime` 下写入自包含运行时。复制部署保证应用不受后续 workspace 构建影响。其冒烟测试从临时目录启动已打包 sidecar，打包过程也会拒绝应用中的仓库路径、浏览器入口或符号链接。已打包应用不会查找开发仓库或系统 Node 安装。
+打包模式会构建 release Swift 可执行文件和已编译 sidecar、嵌入 Sparkle、以复制方式部署生产依赖、依据每个包的发布文件清单补齐缺失的内部 workspace 依赖、移除原生 overlay 已禁用的浏览器入口、验证官方 Node 压缩包校验和，并在 `Contents/Resources/runtime` 下写入自包含运行时。复制部署保证应用不受后续 workspace 构建影响。其冒烟测试从临时目录启动已打包 sidecar，打包过程也会拒绝应用中的仓库路径、浏览器入口或 Sparkle.framework 之外的符号链接。已打包应用不会查找开发仓库或系统 Node 安装。
 
 ## 分发
 
-arm64 release 应用包为 `DS Harness.app`，bundle identifier 是 `app.sayall.ds-app`。`Resources/AppIcon.png` 是 1024×1024 图标母版。`scripts/sign_and_package.sh` 使用 Developer ID 与 Hardened Runtime，由内向外签名原生 addon、Node 运行时和外层应用。Node 只获得 V8 与原生 addon 所需的 JIT、未签名可执行内存和停用库验证权限；release 会拒绝调试 entitlement。公证流水线会对应用与 `DS-Harness-<version>-arm64.dmg` 分别执行 staple 和验证，再写入其 SHA-256 文件。
+arm64 release 应用包为 `DS Harness.app`，bundle identifier 是 `app.sayall.ds-app`。`Resources/AppIcon.png` 是 1024×1024 图标母版。`scripts/sign_and_package.sh` 使用 Developer ID 与 Hardened Runtime，由内向外签名 Sparkle、原生 addon、Node 运行时和外层应用。Node 只获得 V8 与原生 addon 所需的 JIT、未签名可执行内存和停用库验证权限；release 会拒绝调试 entitlement。公证流水线会对应用与 `DS-Harness-<version>-arm64.dmg` 分别执行 staple 和验证，写入其 SHA-256 文件，并生成带嵌入式 Markdown 发布说明的签名 Sparkle ZIP 与 appcast。
+
+应用每天检查一次 GitHub 正式版 appcast，发现更新后由用户确认下载和安装，不会静默安装。“检查更新…”可从应用菜单、关于窗口和“设置 → 更新”打开。“接收预览版更新”默认关闭；开启后，自动检查和手动检查会解析包含 `appcast.xml` 的最新非草稿 GitHub Release。解析失败时会回退正式版 appcast。发布资产直接通过 GitHub 交付，本 lane 暂不处理 CDN。
 
 当前已公证版本是面向 Apple Silicon、要求 macOS 14 或更高版本的 [DS Harness 0.1.1](https://github.com/GetSayAll/deepseek-harness-app/releases/tag/v0.1.1)。[最新 DMG 链接](https://github.com/GetSayAll/deepseek-harness-app/releases/latest/download/DS-Harness-0.1.1-arm64.dmg)通过 GitHub 最新 Release 解析。
 
@@ -38,7 +40,7 @@ Web 客户端仍是完整产品界面。原生 `0.1.1` 尚未显示运行轨迹�
 
 1. **补齐工作台协议能力。** 为运行轨迹、计划审阅、目标与后台任务、子智能体只读状态增加结构化原生方法和事件，并在现有输入座位与详情栏中呈现。这能在不改变 V1 信息架构的情况下覆盖最大比例的长时间 Agent 工作。
 2. **应用内组合。** 通过原生协议和设置界面提供预设、插件、默认模型与模型目录，消除常用配置路径中的配置文件操作。
-3. **安全更新分发。** 增加签名自动更新、发布通道元数据和保护隐私的崩溃诊断，让用户无需重新安装 DMG 即可保持最新版本。
+3. **发布诊断。** 增加保护隐私的崩溃诊断和发布健康信号，同时不扩大应用的敏感权限。
 4. **深化工具与产物体验。** 增加差异、位置、产物、搜索和长终端输出的专用渲染器，同时为第三方插件保留通用回退。
 5. **扩展平台与外观。** 在核心工作流对齐后评估 universal binary，并完成深色与高对比度视觉验收；这些工作可以扩大覆盖面，但对首日任务价值的提升低于缺失的工作台操作。
 
