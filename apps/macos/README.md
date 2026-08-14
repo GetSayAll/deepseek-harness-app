@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-`apps/macos` builds DS Harness, the native macOS client for DeepSeek Harness. SwiftUI owns scenes, navigation, and application state; narrow AppKit hooks provide foreground activation and desktop-only controls. The app starts the real Harness profile as a Node sidecar and communicates over versioned NDJSON on stdio. It does not open a localhost port. The native About window links to the DS Harness website with the `from=mac` attribution parameter.
+`apps/macos` builds DS Harness, the native macOS client for DeepSeek Harness. SwiftUI owns scenes, navigation, and application state; narrow AppKit hooks provide foreground activation and desktop-only controls. The app starts the real Harness profile as a Node sidecar and communicates over versioned NDJSON on stdio. It does not open a localhost port. Users configure the DeepSeek API key in the native Settings window; the value travels write-only through the existing credentials API into the owner-only Harness credential store, and the UI reads back status only. The native About window links to the DS Harness website with the `from=mac` attribution parameter.
 
 The first client slice lists workspaces and sessions, creates sessions, reads visible conversation history, renders basic Markdown, sends prompts, streams assistant text, and cancels active generation. It also renders tool activity, answers approval requests, and presents structured user questions in the composer. Plugin-injected context and model reasoning remain in the Harness log but are not rendered as user-visible chat messages.
 
@@ -20,7 +20,7 @@ cd apps/macos && swift test
 
 The normal run modes stage `dist/DS Harness.app` and launch it as a foreground development application. `DSH_MACOS_REPOSITORY_ROOT` and `DSH_NODE_PATH` select the source sidecar and development Node executable only when the repository override is set.
 
-The package mode builds a release Swift executable and compiled sidecar, deploys production dependencies, completes missing internal workspace dependencies from each package's publish-file list, verifies the official Node archive checksum, and writes a self-contained runtime under `Contents/Resources/runtime`. Its smoke test runs the packaged sidecar from a temporary directory, and packaging rejects repository paths or symbolic links in the application. A packaged app does not search for a repository or system Node installation.
+The package mode builds a release Swift executable and compiled sidecar, deploys copied production dependencies, completes missing internal workspace dependencies from each package's publish-file list, removes browser entries disabled by the native overlay, verifies the official Node archive checksum, and writes a self-contained runtime under `Contents/Resources/runtime`. Copy deployment keeps the application independent from later workspace builds. Its smoke test runs the packaged sidecar from a temporary directory, and packaging rejects repository paths, browser entries, or symbolic links in the application. A packaged app does not search for a repository or system Node installation.
 
 ## Distribution
 

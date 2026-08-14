@@ -72,6 +72,22 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(answers.first?["custom"] as? String, "测试")
     }
 
+    func testCredentialDescriptionContainsStatusButNoValue() throws {
+        let data = Data(#"{"credentials":{"DEEPSEEK_API_KEY":{"configured":true,"source":"file","writable":true}}}"#.utf8)
+        let description = try JSONDecoder().decode(CredentialDescribeValue.self, from: data)
+        let credential = try XCTUnwrap(description.credentials[AppStore.deepSeekCredentialRef])
+
+        XCTAssertTrue(credential.configured)
+        XCTAssertEqual(credential.source, "file")
+        XCTAssertTrue(credential.writable)
+    }
+
+    func testAPIKeyNormalizationAcceptsOnlyTheKeyValue() throws {
+        XCTAssertEqual(try AppStore.normalizedAPIKey("  sk-test-value  "), "sk-test-value")
+        XCTAssertThrowsError(try AppStore.normalizedAPIKey("DEEPSEEK_API_KEY=sk-test-value"))
+        XCTAssertThrowsError(try AppStore.normalizedAPIKey("   "))
+    }
+
     private func decode(_ json: String) throws -> JSONValue {
         try JSONDecoder().decode(JSONValue.self, from: Data(json.utf8))
     }

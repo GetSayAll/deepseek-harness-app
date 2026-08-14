@@ -9,14 +9,25 @@ struct DeepSeekHarnessApp: App {
     var body: some Scene {
         WindowGroup("DS Harness", id: "main") {
             ContentView(store: store)
-                .frame(minWidth: 760, minHeight: 520)
+                .frame(minWidth: 900, minHeight: 600)
                 .task {
                     appDelegate.stopApplication = { await store.stop() }
                     await store.start()
                 }
         }
-        .defaultSize(width: 960, height: 680)
+        .defaultSize(width: 1280, height: 800)
         .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("新会话") {
+                    Task { await store.newSession() }
+                }
+                .keyboardShortcut("n", modifiers: .command)
+
+                Button("添加工作区…") {
+                    Task { await store.addWorkspace() }
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .appInfo) {
                 AboutLink()
             }
@@ -36,7 +47,9 @@ struct DeepSeekHarnessApp: App {
 
         Settings {
             SettingsView(store: store)
+                .frame(minWidth: 760, minHeight: 560)
         }
+        .defaultSize(width: 920, height: 700)
     }
 }
 
@@ -50,6 +63,7 @@ private struct AboutLink: View {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var stopApplication: (() async -> Void)?
 
@@ -57,15 +71,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
-            if NSApp.windows.isEmpty {
+            if !Self.hasVisibleMainWindow(in: NSApp.windows) {
                 NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
             }
         }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil) }
+        if !Self.hasVisibleMainWindow(in: sender.windows) {
+            NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
+        }
         return true
+    }
+
+    static func hasVisibleMainWindow(in windows: [NSWindow]) -> Bool {
+        windows.contains { window in
+            isVisibleMainWindow(identifier: window.identifier?.rawValue, visible: window.isVisible)
+        }
+    }
+
+    static func isVisibleMainWindow(identifier: String?, visible: Bool) -> Bool {
+        visible && identifier?.hasPrefix("main-") == true
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

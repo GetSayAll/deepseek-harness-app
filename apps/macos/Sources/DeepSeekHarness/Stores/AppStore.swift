@@ -5,6 +5,8 @@ import Observation
 @MainActor
 @Observable
 final class AppStore {
+    nonisolated static let deepSeekCredentialRef = "DEEPSEEK_API_KEY"
+
     enum ConnectionState: Equatable {
         case idle
         case starting
@@ -29,13 +31,17 @@ final class AppStore {
     var hostDescription: HostDescription?
     var hostVersion = "—"
     var capabilities: [String] = []
+    var deepSeekCredential: CredentialView?
     var workspaces: [Workspace] = []
+    var preferredWorkspaceId: String?
     var sessions: [SessionSummary] = []
     var selectedSessionId: String?
     var conversation: [ConversationItem] = []
     var pendingInteractions: [PendingInteraction] = []
+    var selectedToolId: String?
     var draft = ""
     var isSending = false
+    var isCredentialSaving = false
     var errorMessage: String?
 
     var selectedSession: SessionSummary? {
@@ -44,6 +50,13 @@ final class AppStore {
 
     var selectedPendingInteraction: PendingInteraction? {
         pendingInteractions.first { $0.sessionId == selectedSessionId }
+    }
+
+    var selectedTool: ToolCard? {
+        conversation.compactMap { item -> ToolCard? in
+            guard case let .tool(tool) = item, tool.id == selectedToolId else { return nil }
+            return tool
+        }.last
     }
 
     func start() async {
@@ -100,9 +113,22 @@ final class AppStore {
                 payload: EmptyPayload(),
                 as: SessionListValue.self
             )
-            let (workspaceValue, sessionValue) = try await (workspaceList, sessionList)
+            async let credentialDescription = host.request(
+                method: "credentials.describe",
+                payload: CredentialDescribePayload(refs: [Self.deepSeekCredentialRef]),
+                as: CredentialDescribeValue.self
+            )
+            let (workspaceValue, sessionValue, credentialValue) = try await (
+                workspaceList,
+                sessionList,
+                credentialDescription
+            )
             workspaces = workspaceValue.items
+            if !workspaces.contains(where: { $0.workspaceId == preferredWorkspaceId }) {
+                preferredWorkspaceId = workspaces.first?.workspaceId
+            }
             sessions = sessionValue.items.filter { !$0.blank }
+            deepSeekCredential = credentialValue.credentials[Self.deepSeekCredentialRef]
             selectedSessionId = selectedSessionId ?? sessions.first?.sessionId
             if let selectedSessionId { try await loadHistory(sessionId: selectedSessionId) }
             connectionState = .ready
@@ -111,9 +137,69 @@ final class AppStore {
         }
     }
 
+    func saveDeepSeekAPIKey(_ input: String) async -> Bool {
+        let value: String
+        do {
+            value = try Self.normalizedAPIKey(input)
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+        isCredentialSaving = true
+        defer { isCredentialSaving = false }
+        do {
+            _ = try await host.request(
+                method: "credentials.set",
+                payload: CredentialSetPayload(ref: Self.deepSeekCredentialRef, value: value),
+                as: EmptyPayload.self
+            )
+            try await refreshDeepSeekCredential()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func removeDeepSeekAPIKey() async {
+        isCredentialSaving = true
+        defer { isCredentialSaving = false }
+        do {
+            _ = try await host.request(
+                method: "credentials.unset",
+                payload: CredentialUnsetPayload(ref: Self.deepSeekCredentialRef),
+                as: EmptyPayload.self
+            )
+            try await refreshDeepSeekCredential()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshDeepSeekCredential() async throws {
+        let value = try await host.request(
+            method: "credentials.describe",
+            payload: CredentialDescribePayload(refs: [Self.deepSeekCredentialRef]),
+            as: CredentialDescribeValue.self
+        )
+        deepSeekCredential = value.credentials[Self.deepSeekCredentialRef]
+    }
+
+    nonisolated static func normalizedAPIKey(_ input: String) throws -> String {
+        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
+            throw NativeProtocolError.host("请输入 DeepSeek API Key")
+        }
+        guard !value.contains("="), value.unicodeScalars.allSatisfy({ 0x21...0x7E ~= $0.value }) else {
+            throw NativeProtocolError.host("API Key 格式无效；请只粘贴 Key 本身")
+        }
+        return value
+    }
+
     func selectSession(_ sessionId: String?) async {
         guard selectedSessionId != sessionId else { return }
         selectedSessionId = sessionId
+        selectedToolId = nil
         conversation = []
         guard let sessionId else { return }
         do { try await loadHistory(sessionId: sessionId) }
@@ -134,6 +220,7 @@ final class AppStore {
             )
             sessions = list.items
             selectedSessionId = value.sessionId
+            selectedToolId = nil
             conversation = []
         } catch { errorMessage = error.localizedDescription }
     }
@@ -147,6 +234,7 @@ final class AppStore {
                 as: WorkspaceCreateValue.self
             )
             if !workspaces.contains(where: { $0.id == value.workspace.id }) { workspaces.append(value.workspace) }
+            preferredWorkspaceId = value.workspace.workspaceId
             await newSession(workspaceId: value.workspace.workspaceId)
         } catch { errorMessage = error.localizedDescription }
     }
@@ -154,7 +242,13 @@ final class AppStore {
     func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        if selectedSessionId == nil { await newSession() }
+        if selectedSessionId == nil {
+            guard let workspaceId = preferredWorkspaceId ?? workspaces.first?.workspaceId else {
+                errorMessage = "请先添加并选择一个工作区。"
+                return
+            }
+            await newSession(workspaceId: workspaceId)
+        }
         guard let selectedSessionId else { return }
         draft = ""
         isSending = true
@@ -179,6 +273,10 @@ final class AppStore {
                 as: AcceptedValue.self
             )
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    func selectTool(_ tool: ToolCard?) {
+        selectedToolId = tool?.id
     }
 
     func answerApproval(_ approval: PendingApproval, outcome: String) async {

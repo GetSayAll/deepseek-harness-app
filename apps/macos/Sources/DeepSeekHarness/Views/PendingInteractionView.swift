@@ -18,27 +18,50 @@ private struct ApprovalView: View {
     @State private var busy = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("等待批准", systemImage: "exclamationmark.shield.fill")
-                .font(.headline)
-                .foregroundStyle(.orange)
-            Text(approval.reason ?? "工具 \(approval.toolName) 请求一次额外权限。")
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.shield")
+                    .font(.system(size: 22))
+                    .foregroundStyle(DSTheme.warning)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("需要你的批准")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(DSTheme.textPrimary)
+                    Text(approval.reason ?? "工具 \(approval.toolName) 请求一次额外权限。")
+                        .font(.system(size: 13))
+                        .foregroundStyle(DSTheme.textSecondary)
+                }
+            }
+
             if let card = toolCard {
                 Text(card.arguments)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(DSTheme.textPrimary)
                     .textSelection(.enabled)
                     .lineLimit(6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(DSTheme.surfacePrimary.opacity(0.82))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(DSTheme.borderSubtle)
+                    }
             }
+
             HStack {
                 Spacer()
-                Button("拒绝") { answer("rejected") }.disabled(busy)
+                Button("拒绝") { answer("rejected") }
+                    .disabled(busy)
                 Button("允许一次") { answer("allowed-once") }
                     .buttonStyle(.borderedProminent)
+                    .tint(DSTheme.brandPrimary)
                     .disabled(busy)
             }
         }
-        .padding(16)
-        .background(.orange.opacity(0.08))
+        .padding(20)
+        .frame(maxWidth: .infinity, minHeight: 176)
+        .dsCard(cornerRadius: 16, fill: DSTheme.warning.opacity(0.08), border: DSTheme.warning.opacity(0.45), shadow: true)
     }
 
     private var toolCard: ToolCard? {
@@ -72,48 +95,84 @@ private struct QuestionView: View {
     @State private var validationMessage: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Label("DeepSeek 正在等待你的回答", systemImage: "questionmark.bubble.fill")
-                    .font(.headline)
-                ForEach(request.questions) { question in
-                    questionSection(question)
-                }
-                if let validationMessage {
-                    Text(validationMessage).foregroundStyle(.red).font(.caption)
-                }
-                HStack {
-                    Button("取消") { cancel() }.disabled(busy)
-                    Spacer()
-                    Button("提交回答") { submit() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(busy)
-                }
+        VStack(spacing: 0) {
+            HStack {
+                Label("智能体需要更多信息", systemImage: "questionmark.bubble")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(DSTheme.textPrimary)
+                Spacer()
+                Text("\(answeredCount)/\(request.questions.count) 已回答")
+                    .font(.system(size: 12))
+                    .foregroundStyle(DSTheme.textSecondary)
             }
-            .padding(16)
+            .padding(.horizontal, 20)
+            .frame(height: 52)
+            .overlay(alignment: .bottom) { Divider() }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(request.questions) { question in
+                        questionSection(question)
+                    }
+                    if let validationMessage {
+                        Text(validationMessage)
+                            .foregroundStyle(DSTheme.danger)
+                            .font(.system(size: 12))
+                    }
+                }
+                .padding(20)
+            }
+            .frame(maxHeight: 236)
+
+            HStack {
+                Button("取消") { cancel() }.disabled(busy)
+                Spacer()
+                Button("提交回答") { submit() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DSTheme.brandPrimary)
+                    .disabled(busy || answeredCount != request.questions.count)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
-        .frame(maxHeight: 360)
-        .background(.regularMaterial)
+        .dsCard(cornerRadius: 16, shadow: true)
     }
 
     @ViewBuilder
     private func questionSection(_ question: PendingQuestion.Question) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             if let header = question.header {
-                Text(header).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(header)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(DSTheme.textSecondary)
             }
-            Text(question.question).font(.body.weight(.semibold))
+            Text(question.question)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(DSTheme.textPrimary)
             if let detail = question.detail {
                 Text((try? AttributedString(markdown: detail)) ?? AttributedString(detail))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .foregroundStyle(DSTheme.textSecondary)
             }
-            ForEach(question.options) { option in
-                optionButton(option, question: question)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 10)], spacing: 10) {
+                ForEach(question.options) { option in
+                    optionButton(option, question: question)
+                }
             }
-            TextField(question.options.isEmpty ? "请输入回答" : "其他回答（可选）", text: customBinding(question))
-                .textFieldStyle(.roundedBorder)
+
+            TextField(question.options.isEmpty ? "请输入回答" : "补充说明（可选）", text: customBinding(question), axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...3)
+                .padding(10)
+                .background(DSTheme.surfacePrimary)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay { RoundedRectangle(cornerRadius: 8).stroke(DSTheme.borderSubtle) }
                 .disabled(busy || draft(question).skipped)
-            Toggle("跳过这个问题", isOn: skippedBinding(question)).disabled(busy)
+
+            Toggle("跳过这个问题", isOn: skippedBinding(question))
+                .font(.system(size: 12))
+                .disabled(busy)
         }
     }
 
@@ -131,19 +190,39 @@ private struct QuestionView: View {
                 }
             }
         } label: {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 8) {
                 Image(systemName: selected ? (question.multiSelect ? "checkmark.square.fill" : "largecircle.fill.circle") : (question.multiSelect ? "square" : "circle"))
+                    .foregroundStyle(selected ? DSTheme.brandPrimary : DSTheme.textSecondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(DSTheme.textPrimary)
                     if let description = option.description {
-                        Text(description).font(.caption).foregroundStyle(.secondary)
+                        Text(description)
+                            .font(.system(size: 11))
+                            .foregroundStyle(DSTheme.textSecondary)
                     }
                 }
                 Spacer()
             }
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .topLeading)
+            .background(selected ? DSTheme.selectionFill : DSTheme.surfacePrimary)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(selected ? DSTheme.brandPrimary.opacity(0.65) : DSTheme.borderSubtle)
+            }
         }
         .buttonStyle(.plain)
         .disabled(busy || draft(question).skipped)
+    }
+
+    private var answeredCount: Int {
+        request.questions.filter { question in
+            let value = draft(question)
+            return value.skipped || !value.selected.isEmpty || !value.custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }.count
     }
 
     private func draft(_ question: PendingQuestion.Question) -> QuestionDraft {
@@ -186,11 +265,7 @@ private struct QuestionView: View {
     }
 
     private func submit() {
-        let unanswered = request.questions.first { question in
-            let value = draft(question)
-            return !value.skipped && value.selected.isEmpty && value.custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-        guard unanswered == nil else {
+        guard answeredCount == request.questions.count else {
             validationMessage = "请回答或跳过每个问题。"
             return
         }

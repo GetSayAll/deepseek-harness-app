@@ -77,11 +77,22 @@ done
 iconutil -c icns "$ICONSET" -o "$APP_RESOURCES/AppIcon.icns"
 
 cd "$REPOSITORY_ROOT"
-CI=true pnpm --config.node-linker=hoisted --filter @deepseek-ai/dsh-macos deploy --legacy --prod "$RUNTIME_APP"
+CI=true pnpm --config.node-linker=hoisted --config.package-import-method=copy \
+  --filter @deepseek-ai/dsh-macos deploy --legacy --prod "$RUNTIME_APP"
 node "$APP_ROOT/scripts/complete-runtime-workspace-closure.mjs" "$REPOSITORY_ROOT" "$RUNTIME_APP"
 find "$RUNTIME_APP/node_modules" -type d -name .bin -prune -exec rm -rf {} +
 rm -rf "$RUNTIME_APP/node_modules/.pnpm"
 rm -f "$RUNTIME_APP/node_modules/.modules.yaml"
+find "$RUNTIME_APP/node_modules/@deepseek-ai" -type f \
+  \( -path '*/lib/client.js' -o -path '*/lib/client.js.map' \) -delete
+# pnpm deploy can retain workspace hard links even with copy imports. Replace
+# every multi-link file so later workspace builds cannot mutate the app bundle.
+find "$RUNTIME_APP" -type f -links +1 -exec sh -c '
+  for file do
+    cp -p "$file" "$file.dsh-copy"
+    mv -f "$file.dsh-copy" "$file"
+  done
+' sh {} +
 find "$RUNTIME_APP/node_modules/node-pty/prebuilds" -mindepth 1 -maxdepth 1 -type d \
   ! -name "darwin-$NODE_ARCH" -exec rm -rf {} +
 
@@ -149,12 +160,21 @@ if (frames[1]?.id !== 's' || frames[1]?.type !== 'response' || frames[1]?.value 
 }
 NODE
 
-if rg -a -l -F "$REPOSITORY_ROOT" "$APP_BUNDLE" | grep -q .; then
+if [[ -n "$(rg -a -l -F "$REPOSITORY_ROOT" "$APP_BUNDLE")" ]]; then
   echo "packaged application contains an absolute repository path" >&2
   exit 1
 fi
 if find "$APP_BUNDLE" -type l -print -quit | grep -q .; then
   echo "packaged application contains symbolic links" >&2
+  exit 1
+fi
+if find "$RUNTIME_APP" -type f -links +1 -print -quit | grep -q .; then
+  echo "packaged native runtime contains hard-linked files" >&2
+  exit 1
+fi
+if find "$RUNTIME_APP/node_modules/@deepseek-ai" -type f \
+  \( -path '*/lib/client.js' -o -path '*/lib/client.js.map' \) -print -quit | grep -q .; then
+  echo "packaged native runtime contains disabled browser entry artifacts" >&2
   exit 1
 fi
 

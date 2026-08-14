@@ -4,34 +4,77 @@ struct ComposerView: View {
     let store: AppStore
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            TextField("给 DeepSeek 发送消息…", text: Binding(
-                get: { store.draft },
-                set: { store.draft = $0 }
-            ), axis: .vertical)
-            .lineLimit(1...8)
-            .textFieldStyle(.plain)
-            .padding(10)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .onSubmit { Task { await store.send() } }
+        VStack(alignment: .leading, spacing: 10) {
+            TextField(canCompose ? "给智能体发消息…" : "选择一个工作区开始", text: draftBinding, axis: .vertical)
+                .font(.system(size: 14))
+                .foregroundStyle(DSTheme.textPrimary)
+                .lineLimit(3...10)
+                .textFieldStyle(.plain)
+                .disabled(!canCompose)
+                .onSubmit { Task { await store.send() } }
 
-            if store.isSending {
-                Button { Task { await store.cancel() } } label: {
-                    Image(systemName: "stop.fill")
+            HStack(spacing: 8) {
+                if store.selectedSessionId == nil {
+                    Menu {
+                        ForEach(store.workspaces) { workspace in
+                            Button {
+                                store.preferredWorkspaceId = workspace.workspaceId
+                            } label: {
+                                if store.preferredWorkspaceId == workspace.workspaceId {
+                                    Label(workspace.title, systemImage: "checkmark")
+                                } else {
+                                    Text(workspace.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(selectedWorkspaceTitle, systemImage: "folder")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .disabled(store.workspaces.isEmpty)
+                } else {
+                    Label("通用助手", systemImage: "sparkles")
+                        .font(.system(size: 12))
+                        .foregroundStyle(DSTheme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .frame(height: 28)
+                        .background(DSTheme.surfaceSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .help("停止生成")
-            } else {
-                Button { Task { await store.send() } } label: {
-                    Image(systemName: "arrow.up")
+
+                Spacer()
+
+                Button { Task { store.isSending ? await store.cancel() : await store.send() } } label: {
+                    Image(systemName: store.isSending ? "stop.fill" : "arrow.up")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(store.isSending ? DSTheme.danger : DSTheme.brandPrimary)
+                        .clipShape(Circle())
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(store.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .help("发送")
+                .buttonStyle(.plain)
+                .disabled(!store.isSending && (!canCompose || store.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                .opacity(!store.isSending && (!canCompose || store.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.4 : 1)
+                .help(store.isSending ? "停止生成" : "发送")
             }
         }
         .padding(16)
+        .frame(minHeight: 116, maxHeight: 336, alignment: .top)
+        .dsCard(cornerRadius: 16, shadow: true)
+    }
+
+    private var draftBinding: Binding<String> {
+        Binding(get: { store.draft }, set: { store.draft = $0 })
+    }
+
+    private var canCompose: Bool {
+        !store.workspaces.isEmpty
+    }
+
+    private var selectedWorkspaceTitle: String {
+        store.workspaces.first { $0.workspaceId == store.preferredWorkspaceId }?.title
+            ?? store.workspaces.first?.title
+            ?? "选择工作区"
     }
 }

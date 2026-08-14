@@ -5,6 +5,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { clientBundle } from '../packages/client/tsdown.client.ts'
 
@@ -48,5 +49,21 @@ describe('client bundle CSS Modules', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
+  })
+
+  it('uses a repository-relative virtual id for workspace stylesheets', () => {
+    const stylesheet = fileURLToPath(new URL(
+      '../packages/client/ui-conversation/src/client/queue/QueueDock.module.css',
+      import.meta.url,
+    ))
+    const importer = fileURLToPath(new URL(
+      '../packages/client/ui-conversation/src/client/queue/QueueDock.tsx',
+      import.meta.url,
+    ))
+    const virtualId = cssPlugin().resolveId?.('./QueueDock.module.css', importer)
+
+    expect(virtualId).toBe('\0dsh-css:./packages/client/ui-conversation/src/client/queue/QueueDock.module.css.mjs')
+    expect(virtualId).not.toContain(fileURLToPath(new URL('..', import.meta.url)))
+    expect(stylesheet).toContain('/packages/client/ui-conversation/')
   })
 })

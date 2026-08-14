@@ -5,84 +5,149 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if store.selectedSessionId == nil {
-                ContentUnavailableView {
-                    Label("开始一个会话", systemImage: "bubble.left.and.bubble.right")
-                } description: {
-                    Text("新建会话后即可使用真实 Harness 插件与模型。")
-                } actions: {
-                    Button("新建会话") { Task { await store.newSession() } }
-                    Button("添加工作区") { Task { await store.addWorkspace() } }
+            if store.selectedSessionId == nil || (
+                store.conversation.isEmpty
+                    && !store.isSending
+                    && store.selectedPendingInteraction == nil
+            ) {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 32)
+                    EmptyConversationView(store: store)
+                    ComposerSeatView(store: store)
+                    Spacer(minLength: 84)
                 }
             } else {
+                ConversationHeaderView(store: store)
+
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 18) {
+                        LazyVStack(spacing: 22) {
                             ForEach(store.conversation) { item in
-                                ConversationItemView(item: item).id(item.id)
+                                ConversationItemView(store: store, item: item).id(item.id)
                             }
                         }
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 24)
+                        .frame(maxWidth: DSTheme.contentMaximum)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 20)
                     }
                     .onChange(of: store.conversation) { _, conversation in
                         guard let id = conversation.last?.id else { return }
-                        withAnimation { proxy.scrollTo(id, anchor: .bottom) }
+                        withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(id, anchor: .bottom) }
                     }
                 }
-                Divider()
-                if let pending = store.selectedPendingInteraction {
-                    PendingInteractionView(store: store, pending: pending).id(pending.id)
-                } else {
-                    ComposerView(store: store)
-                }
+
+                ComposerSeatView(store: store)
             }
         }
-        .navigationTitle(store.selectedSession?.title ?? "新会话")
+        .background(DSTheme.backgroundBase)
+    }
+}
+
+private struct EmptyConversationView: View {
+    let store: AppStore
+
+    var body: some View {
+        VStack(spacing: 12) {
+            BrandMark(size: 72)
+            Text("今天想构建什么？")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(DSTheme.textPrimary)
+            Text("选择工作区，描述目标，Harness 会调用模型与工具完成任务。")
+                .font(.system(size: 14))
+                .foregroundStyle(DSTheme.textSecondary)
+            if store.workspaces.isEmpty {
+                Button("添加工作区") { Task { await store.addWorkspace() } }
+                    .buttonStyle(.bordered)
+                    .tint(DSTheme.brandPrimary)
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ComposerSeatView: View {
+    let store: AppStore
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            ComposerView(store: store)
+                .allowsHitTesting(store.selectedPendingInteraction == nil)
+                .opacity(store.selectedPendingInteraction == nil ? 1 : 0)
+
+            if let pending = store.selectedPendingInteraction {
+                PendingInteractionView(store: store, pending: pending)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: DSTheme.composerMaximum)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
     }
 }
 
 private struct ConversationItemView: View {
+    let store: AppStore
     let item: ConversationItem
 
     var body: some View {
         switch item {
         case let .message(message): MessageView(message: message)
-        case let .tool(tool): ToolCardView(tool: tool)
+        case let .tool(tool): ToolRowView(store: store, tool: tool)
         }
     }
 }
 
-private struct ToolCardView: View {
+private struct ToolRowView: View {
+    let store: AppStore
     let tool: ToolCard
-    @State private var expanded = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            if !tool.detail.isEmpty {
-                Text(tool.detail)
-                    .font(.system(.caption, design: tool.card == "terminal" ? .monospaced : .default))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
-            }
-        } label: {
-            HStack(spacing: 8) {
+        Button { store.selectTool(tool) } label: {
+            HStack(spacing: 10) {
                 Image(systemName: tool.isError ? "exclamationmark.triangle.fill" : symbol)
-                    .foregroundStyle(tool.isError ? .red : .secondary)
-                Text(tool.title).lineLimit(1)
+                    .foregroundStyle(tool.isError ? DSTheme.danger : DSTheme.textSecondary)
+                    .frame(width: 18)
+                Text(tool.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(DSTheme.textPrimary)
+                    .lineLimit(1)
                 Spacer()
-                if tool.completed {
-                    Image(systemName: tool.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(tool.isError ? .red : .green)
-                } else {
-                    ProgressView().controlSize(.small)
-                }
+                status
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DSTheme.textSecondary)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 38)
+            .background(store.selectedToolId == tool.id ? DSTheme.selectionFill : DSTheme.surfacePrimary)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(store.selectedToolId == tool.id ? DSTheme.brandPrimary.opacity(0.25) : DSTheme.borderSubtle)
             }
         }
-        .padding(12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(.plain)
+        .help("查看工具输入与输出")
+    }
+
+    @ViewBuilder
+    private var status: some View {
+        if tool.completed {
+            Label(tool.isError ? "失败" : "已完成", systemImage: tool.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(tool.isError ? DSTheme.danger : DSTheme.success)
+        } else {
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.mini)
+                Text("运行中")
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(DSTheme.brandPrimary)
+        }
     }
 
     private var symbol: String {
@@ -98,30 +163,41 @@ private struct MessageView: View {
     let message: ChatMessage
 
     var body: some View {
-        HStack(alignment: .top) {
-            if message.role == .assistant {
-                content
-                Spacer(minLength: 80)
-            } else {
-                Spacer(minLength: 80)
-                content
+        HStack(alignment: .top, spacing: 12) {
+            avatar
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
+                Text(message.role == .assistant ? "DS Harness" : "你")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(message.role == .assistant ? DSTheme.textPrimary : DSTheme.textSecondary)
+                Text(markdown)
+                    .font(.system(size: 15))
+                    .foregroundStyle(DSTheme.textPrimary)
+                    .textSelection(.enabled)
+                    .lineSpacing(5)
+                    .padding(message.role == .user ? 12 : 0)
+                    .background(message.role == .user ? DSTheme.selectionFill : .clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: .leading)
+                if message.streaming {
+                    ProgressView().controlSize(.small).tint(DSTheme.brandHighlight)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
         }
     }
 
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(message.role == .assistant ? "DeepSeek" : "你")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(markdown)
-                .textSelection(.enabled)
-                .lineSpacing(3)
-            if message.streaming { ProgressView().controlSize(.small) }
+    @ViewBuilder
+    private var avatar: some View {
+        if message.role == .assistant {
+            BrandMark(size: 30)
+        } else {
+            Image(systemName: "person")
+                .font(.system(size: 15))
+                .foregroundStyle(DSTheme.brandPrimary)
+                .frame(width: 30, height: 30)
+                .background(DSTheme.selectionFill)
+                .clipShape(Circle())
         }
-        .padding(12)
-        .background(message.role == .assistant ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.tint.opacity(0.12)))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var markdown: AttributedString {

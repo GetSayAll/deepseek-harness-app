@@ -228,11 +228,12 @@ function clientConfig(id: string, entry: string): UserConfig {
       resolveId(source: string, importer: string | undefined) {
         if (!source.endsWith('.module.css')) return null
         const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
-        return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
+        return CSS_VIRTUAL_PREFIX + virtualCssPath(abs) + CSS_VIRTUAL_SUFFIX
       },
       async load(virtualId: string) {
         if (!virtualId.startsWith(CSS_VIRTUAL_PREFIX)) return null
-        const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+        const sourceId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+        const fileId = sourceId.startsWith('.') ? resolvePath(REPOSITORY_ROOT, sourceId) : sourceId
         // The virtual id otherwise hides the physical stylesheet from Rolldown's watch graph.
         this.addWatchFile(fileId)
         const source = await readFile(fileId)
@@ -271,6 +272,12 @@ function clientConfig(id: string, entry: string): UserConfig {
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },
   }
+}
+
+/** Keep workspace CSS virtual module ids stable without exposing the checkout path in emitted bundles. */
+function virtualCssPath(fileId: string): string {
+  const repositoryPath = relative(REPOSITORY_ROOT, fileId).split(sep).join('/')
+  return repositoryPath.startsWith('../') ? fileId : `./${repositoryPath}`
 }
 
 /** Resolve an emitted JS asset import against its source-tree counterpart. */

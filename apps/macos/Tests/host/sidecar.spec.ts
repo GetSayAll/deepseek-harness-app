@@ -15,6 +15,17 @@ function apiWithDescription(): ApiProxy {
         },
       })),
     },
+    credentials: {
+      describe: vi.fn(async request => ({
+        rpcId: request.rpcId,
+        result: {
+          ok: true,
+          value: { credentials: { DEEPSEEK_API_KEY: { configured: false, writable: true } } },
+        },
+      })),
+      set: vi.fn(async request => ({ rpcId: request.rpcId, result: { ok: true, value: {} } })),
+      unset: vi.fn(async request => ({ rpcId: request.rpcId, result: { ok: true, value: {} } })),
+    },
     respond: vi.fn(async () => ({ accepted: true })),
   } as unknown as ApiProxy
 }
@@ -61,6 +72,38 @@ describe('native sidecar protocol', () => {
     const result = await dispatch({ id: 's', type: 'shutdown' })
 
     expect(result.shutdown).toBe(true)
+  })
+
+  it('carries credential status without returning a value', async () => {
+    const dispatch = createNativeDispatcher({ appVersion: '0.1.0', api: apiWithDescription() })
+    const result = await dispatch({
+      id: 'c', type: 'request', method: 'credentials.describe',
+      payload: { refs: ['DEEPSEEK_API_KEY'] },
+    })
+
+    expect(result.response).toMatchObject({
+      id: 'c',
+      value: {
+        result: {
+          ok: true,
+          value: { credentials: { DEEPSEEK_API_KEY: { configured: false, writable: true } } },
+        },
+      },
+    })
+    expect(JSON.stringify(result.response)).not.toContain('sk-')
+  })
+
+  it('carries a credential value only toward credentials.set', async () => {
+    const api = apiWithDescription()
+    const dispatch = createNativeDispatcher({ appVersion: '0.1.0', api })
+    await dispatch({
+      id: 'c', type: 'request', method: 'credentials.set',
+      payload: { ref: 'DEEPSEEK_API_KEY', value: 'test-secret' },
+    })
+
+    expect(api.credentials.set).toHaveBeenCalledWith(expect.objectContaining({
+      payload: { ref: 'DEEPSEEK_API_KEY', value: 'test-secret' },
+    }))
   })
 
   it('echoes a client response rpc id through ApiProxy.respond', async () => {

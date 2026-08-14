@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`apps/macos` 构建 DeepSeek Harness 的原生 macOS 客户端 DS Harness。SwiftUI 负责场景、导航和应用状态；窄范围 AppKit 钩子负责前台激活及仅桌面端需要的控件。应用以 Node sidecar 启动真实 Harness profile，并通过 stdio 上带版本的 NDJSON 通信，不开放 localhost 端口。原生“关于”窗口使用带 `from=mac` 归因参数的链接进入 DS Harness 官网。
+`apps/macos` 构建 DeepSeek Harness 的原生 macOS 客户端 DS Harness。SwiftUI 负责场景、导航和应用状态；窄范围 AppKit 钩子负责前台激活及仅桌面端需要的控件。应用以 Node sidecar 启动真实 Harness profile，并通过 stdio 上带版本的 NDJSON 通信，不开放 localhost 端口。用户在原生设置窗口配置 DeepSeek API Key；值只写通过既有 credentials API 进入仅所有者可访问的 Harness 凭据存储，界面只能读回状态。原生“关于”窗口使用带 `from=mac` 归因参数的链接进入 DS Harness 官网。
 
 首个客户端切片可以列出工作区与会话、创建会话、读取可见对话历史、渲染基础 Markdown、发送提示、流式显示助手文本并取消正在进行的生成。它还会显示工具活动、响应审批请求，并在输入区呈现结构化用户问答。插件注入的上下文和模型 reasoning 仍保留在 Harness 日志中，但不会作为用户可见聊天消息渲染。
 
@@ -20,7 +20,7 @@ cd apps/macos && swift test
 
 普通运行模式会组装 `dist/DS Harness.app`，并以前台开发应用方式启动。只有设置仓库覆盖路径后，`DSH_MACOS_REPOSITORY_ROOT` 与 `DSH_NODE_PATH` 才会选择源码 sidecar 和开发用 Node 可执行文件。
 
-打包模式会构建 release Swift 可执行文件和已编译 sidecar、部署生产依赖、依据每个包的发布文件清单补齐缺失的内部 workspace 依赖、验证官方 Node 压缩包校验和，并在 `Contents/Resources/runtime` 下写入自包含运行时。其冒烟测试从临时目录启动已打包 sidecar，打包过程也会拒绝应用中的仓库路径或符号链接。已打包应用不会查找开发仓库或系统 Node 安装。
+打包模式会构建 release Swift 可执行文件和已编译 sidecar、以复制方式部署生产依赖、依据每个包的发布文件清单补齐缺失的内部 workspace 依赖、移除原生 overlay 已禁用的浏览器入口、验证官方 Node 压缩包校验和，并在 `Contents/Resources/runtime` 下写入自包含运行时。复制部署保证应用不受后续 workspace 构建影响。其冒烟测试从临时目录启动已打包 sidecar，打包过程也会拒绝应用中的仓库路径、浏览器入口或符号链接。已打包应用不会查找开发仓库或系统 Node 安装。
 
 ## 分发
 

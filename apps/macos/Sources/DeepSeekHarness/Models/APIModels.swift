@@ -88,6 +88,29 @@ struct AcceptedValue: Decodable, Sendable {
     let accepted: Bool
 }
 
+struct CredentialDescribePayload: Encodable, Sendable {
+    let refs: [String]
+}
+
+struct CredentialView: Decodable, Equatable, Sendable {
+    let configured: Bool
+    let source: String?
+    let writable: Bool
+}
+
+struct CredentialDescribeValue: Decodable, Sendable {
+    let credentials: [String: CredentialView]
+}
+
+struct CredentialSetPayload: Encodable, Sendable {
+    let ref: String
+    let value: String
+}
+
+struct CredentialUnsetPayload: Encodable, Sendable {
+    let ref: String
+}
+
 struct WorkspaceCreatePayload: Encodable, Sendable {
     let path: String
 }
