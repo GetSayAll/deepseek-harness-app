@@ -26,6 +26,22 @@ The package mode builds a release Swift executable and compiled sidecar, deploys
 
 The arm64 release bundle is `DS Harness.app`, with bundle identifier `app.sayall.ds-app`. `Resources/AppIcon.png` is the 1024×1024 icon master. `scripts/sign_and_package.sh` signs native addons, the Node runtime, and the containing application from the inside out with Developer ID and Hardened Runtime. Node receives only the JIT, unsigned executable memory, and library-validation exceptions required by V8 and native addons; the release rejects the debug entitlement. The notarized lane staples and validates both the application and `DS-Harness-<version>-arm64.dmg`, then writes its SHA-256 file.
 
+The current notarized release is [DS Harness 0.1.1](https://github.com/GetSayAll/deepseek-harness-app/releases/tag/v0.1.1) for Apple Silicon on macOS 14 or later. The [latest DMG link](https://github.com/GetSayAll/deepseek-harness-app/releases/latest/download/DS-Harness-0.1.1-arm64.dmg) resolves through the latest GitHub Release.
+
+## Native and Web clients
+
+Both clients use the same Harness workspace, session, conversation, tool, approval, and structured-question semantics. The native client packages Node and Host inside the application, carries RPC and events over stdio, stores the DeepSeek credential through the write-only credentials API, and provides macOS windows, menus, shortcuts, directory selection, and accessibility behavior without a browser or localhost server.
+
+The Web client remains the complete product surface. Native `0.1.1` does not yet render trajectory inspection, plan review, goals and background tasks, preset and plugin management, model catalogs, or subagent navigation because the native protocol does not expose their structured data. It also targets Apple Silicon and the approved light appearance, while the Web client covers browser platforms and its existing appearance modes. Unknown tool presentations remain usable through the native generic tool card, but Web-specific executable UI cannot cross the native plugin protocol.
+
+## ROI-ordered roadmap
+
+1. **Protocol-backed workbench parity.** Add structured native methods and events for trajectory, plan review, goals and background tasks, and read-only subagent status; render them in the existing composer seat and details column. This unlocks the largest share of long-running agent work without changing the V1 information architecture.
+2. **In-app composition.** Expose presets, plugins, default model, and model catalog through the native protocol and settings. This removes configuration-file work for the common setup path.
+3. **Safe update delivery.** Add signed automatic updates, release-channel metadata, and privacy-preserving crash diagnostics so users can stay current without reinstalling a DMG.
+4. **Tool and artifact depth.** Add dedicated diff, location, artifact, search, and long-terminal renderers while retaining the generic fallback for third-party plugins.
+5. **Platform reach and appearance.** Evaluate a universal binary and complete dark/high-contrast visual QA after core workflow parity, because these expand reach but unlock less day-one task value than missing workbench operations.
+
 ## Native client protocol
 
 `Protocol/native-client-protocol.json` owns the process-carrier version and generated Swift facts. Version 0 provides protocol negotiation, unary Host RPC, client responses to answerable server requests, and the standard mux and Host event streams. Unary frames retain `ClientRequest` and `ServerResponse`; stream frames retain `ServerRequest`; response frames retain `ClientResponse`. The native carrier only replaces HTTP with correlated NDJSON frames.
