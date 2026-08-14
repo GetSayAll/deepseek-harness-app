@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-macos",
   "description": "Native macOS application and its process-local Harness sidecar",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "scripts": {
