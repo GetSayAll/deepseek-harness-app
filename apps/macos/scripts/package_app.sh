@@ -58,6 +58,7 @@ PNPM_REPOSITORY_ARGS=(
   --config.verify-deps-before-run=error
 )
 pnpm "${PNPM_REPOSITORY_ARGS[@]}" run build:lib:host
+pnpm "${PNPM_REPOSITORY_ARGS[@]}" run build:lib:client
 pnpm "${PNPM_REPOSITORY_ARGS[@]}" --filter @deepseek-ai/dsh-macos run build:host
 
 cd "$APP_ROOT"
