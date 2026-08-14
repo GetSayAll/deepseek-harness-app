@@ -1,0 +1,27 @@
+# Agent Note: macOS 对话与问答卡片对齐
+
+Status: implemented
+
+[中文](2026-08-14-macos-conversation-alignment.zh.md) | English
+
+## Problem
+
+用户消息的气泡与头像之间的水平基准不稳定，结构化问答的选项网格没有占满卡片内容宽度，跳过控件也没有保持统一的左对齐基线。
+
+## Decision
+
+用户消息行固定以头像为右侧锚点，气泡在消息列内右对齐且保留自然宽度。问答卡片的选项按最多三列等宽网格铺满内容区；没有选项时不创建空网格。跳过控件继续使用原生 checkbox 语义，并显式约束为内容区左对齐的小型控件。
+
+## Alternatives considered
+
+**继续使用自适应列和隐式宽度。** 被拒绝，因为列宽会由内容决定，在不同窗口宽度下留下不可解释的右侧空白。
+
+**用自定义按钮替换跳过 Toggle。** 被拒绝，因为原生 Toggle 提供更准确的键盘和辅助功能语义；问题只需要稳定的尺寸和对齐约束。
+
+## Consequences
+
+短用户消息不会在消息列左侧漂移，长消息仍受 525 pt 最大宽度限制。选项数量变化时问答卡片保持稳定列宽，选项超过三项时按行换行。问答提交逻辑和协议载荷不变。
+
+## Verification
+
+`swift build --package-path apps/macos` 与 `swift test --package-path apps/macos` 均通过；临时 ad-hoc 签名后的开发 `.app` 窗口确认标题栏内容已隐藏。
