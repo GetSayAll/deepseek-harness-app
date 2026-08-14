@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-14-macos-immersive-main-window.md
+2026-08-14-macos-immersive-main-window.md: 88c7577980f0c274c2727f0e113eaa885775a6b6
+2026-08-14-macos-immersive-main-window.zh.md: a62f23c44907bc42f5d9d4e92a409f99d9b4f8ca

@@ -20,6 +20,7 @@ struct DeepSeekHarnessApp: App {
                 }
         }
         .defaultSize(width: 1243, height: 852)
+        .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("新会话") {

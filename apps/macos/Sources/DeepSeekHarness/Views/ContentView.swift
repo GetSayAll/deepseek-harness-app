@@ -9,17 +9,6 @@ struct ContentView: View {
         }
         .background(DSTheme.backgroundBase)
         .preferredColorScheme(.light)
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    Task { await store.restart() }
-                } label: {
-                    Label("重新连接", systemImage: "arrow.clockwise")
-                }
-                .disabled(store.connectionState == .starting)
-                .help("重新连接 Host")
-            }
-        }
         .alert("操作失败", isPresented: Binding(
             get: { store.errorMessage != nil },
             set: { if !$0 { store.errorMessage = nil } }
