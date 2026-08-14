@@ -15,7 +15,7 @@ struct DeepSeekHarnessApp: App {
                     await store.start()
                 }
         }
-        .defaultSize(width: 1280, height: 800)
+        .defaultSize(width: 1243, height: 852)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("新会话") {
