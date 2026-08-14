@@ -1,4 +1,4 @@
-# AGENTS.md
+# AGENTS.md—[macOS](apps/macos/AGENTS.md)
 
 DeepSeek Harness is a plugin-based agent harness on vendored Cordis: **everything is a plugin**. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
