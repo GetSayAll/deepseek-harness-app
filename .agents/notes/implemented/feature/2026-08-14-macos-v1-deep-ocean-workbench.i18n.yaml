@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-14-macos-v1-deep-ocean-workbench.md
-2026-08-14-macos-v1-deep-ocean-workbench.md: af48801a904e94a9fa04e45a588633de89775c31
-2026-08-14-macos-v1-deep-ocean-workbench.zh.md: 4fb9a66100d6b7c0eddd50831966064df9b421c2
+2026-08-14-macos-v1-deep-ocean-workbench.md: f339b1c41332f00831eba3ad107d62a9eece1a15
+2026-08-14-macos-v1-deep-ocean-workbench.zh.md: a42a195a9f96069e772fad0f2c066b9203ef8d8a

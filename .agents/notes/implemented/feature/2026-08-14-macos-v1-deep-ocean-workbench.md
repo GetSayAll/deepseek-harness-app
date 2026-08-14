@@ -10,7 +10,7 @@ The native macOS client exposes the Harness session and interaction protocol, bu
 
 ## Decision
 
-DS Harness macOS `0.1.1` uses the V1 “Deep Ocean Workbench” design in [the macOS design reference](../../../../apps/macos/DESIGN.md). SwiftUI owns the main and settings scenes, three-column layout, navigation, conversation timeline, composer, interaction takeovers, tool details, and responsive behavior. AppKit remains limited to foreground activation, application lifecycle, the application icon, and the existing native directory picker.
+DS Harness macOS `0.1.1` uses the V1 “Deep Ocean Workbench” design in [the macOS design reference](../../../../apps/macos/DESIGN.md). SwiftUI owns the main and settings scenes, three-column layout, navigation, conversation timeline, composer, interaction takeovers, tool details, and responsive behavior. AppKit owns foreground activation, application lifecycle, the application icon, the native directory picker, Dock badges, and notification navigation.
 
 The main window uses a light sidebar, a centered conversation column, and an optional tool-details column. Stored sidebar and details widths survive relaunch. Width pressure closes the details column first and changes the sidebar to a `56 pt` icon rail below `1024 pt`. Tool selection opens the details column at widths that retain the required center content width.
 
@@ -20,6 +20,8 @@ Settings use a separate native window with a fixed navigation column. The model 
 
 The current native protocol supplies conversation messages, tool presentation data, approvals, and structured questions. The client does not invent trajectory, plan review, goal, background-task, preset, plugin, or subagent data before corresponding protocol methods exist.
 
+The application uses system notifications for completed turns, approval requests, and structured questions when the target session is not already visible in the active application. Notification text contains only generic status and the selected notification opens the corresponding session. Authorization is requested when the first eligible notification is ready, and the application adds no camera, microphone, screen-recording, Accessibility, or Automation entitlements without a feature that needs them.
+
 ## Alternatives considered
 
 **Embed the Web client in a WebView.** This would reproduce the browser UI faster, but it would give up native window, menu, focus, accessibility, and desktop-control behavior and would mix executable Web UI with the semantic native protocol.
@@ -28,9 +30,11 @@ The current native protocol supplies conversation messages, tool presentation da
 
 **Use the high-contrast V2 dark sidebar.** The stronger color split reduces the calm reading surface and does not match the approved visual direction. V1's light sidebar and restrained blue-cyan emphasis remain the baseline.
 
+**Request every available macOS permission up front.** This would advertise possible future integrations, but it would ask for sensitive access without a current product action and make the release harder to trust and review.
+
 ## Consequences
 
-The native client gains a stable desktop information architecture without adding WebView or presentation RPC methods. New protocol-backed features can reuse the existing sidebar, header, composer seat, details column, settings navigation, and design tokens.
+The native client gains a stable desktop information architecture without adding WebView or presentation RPC methods. New protocol-backed features can reuse the existing sidebar, header, composer seat, details column, settings navigation, and design tokens. Long-running work can notify the user without exposing conversation content or broadening the application's sensitive permissions.
 
 The first release intentionally trails the Web client where the native protocol does not expose structured data. The light theme is the `0.1.1` acceptance target; dark appearance remains basic system-derived behavior.
 

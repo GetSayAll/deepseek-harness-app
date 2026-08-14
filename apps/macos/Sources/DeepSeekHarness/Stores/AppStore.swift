@@ -24,6 +24,7 @@ final class AppStore {
     }
 
     private let host = HostProcess()
+    private let notifications = SystemNotificationService()
     private var hasStarted = false
     private var eventTask: Task<Void, Never>?
 
@@ -78,12 +79,13 @@ final class AppStore {
         await host.stop()
         connectionState = .idle
         hasStarted = false
+        resetPendingInteractions()
     }
 
     private func connect() async {
         connectionState = .starting
         hostDescription = nil
-        pendingInteractions = []
+        resetPendingInteractions()
         do {
             let hello = try await host.start()
             guard hello.protocolVersion == NativeProtocol.version else {
@@ -330,25 +332,42 @@ final class AppStore {
             apply(event, view: payload["view"])
         case "approval/requested":
             guard let approval = Self.approval(rpcId: frame.value.rpcId, payload: payload) else { return }
-            replacePending(.approval(approval))
+            if replacePending(.approval(approval)) {
+                notifications.notifyApproval(
+                    sessionId: approval.sessionId,
+                    approvalId: approval.approvalId,
+                    selectedSessionId: selectedSessionId
+                )
+            }
         case "approval/resolved":
             guard let approvalId = payload["approvalId"]?.stringValue else { return }
             pendingInteractions.removeAll {
                 guard case let .approval(approval) = $0 else { return false }
                 return approval.approvalId == approvalId
             }
+            notifications.removeApproval(approvalId: approvalId)
+            syncPendingInteractionBadge()
         case "question/requested":
             guard let question = Self.question(rpcId: frame.value.rpcId, payload: payload) else { return }
-            replacePending(.question(question))
+            if replacePending(.question(question)) {
+                notifications.notifyQuestion(
+                    sessionId: question.sessionId,
+                    rpcId: question.rpcId,
+                    selectedSessionId: selectedSessionId
+                )
+            }
         case "question/resolved":
             guard let rpcId = payload["questionRpcId"]?.stringValue else { return }
             pendingInteractions.removeAll {
                 guard case let .question(question) = $0 else { return false }
                 return question.rpcId == rpcId
             }
+            notifications.removeQuestion(rpcId: rpcId)
+            syncPendingInteractionBadge()
         case "host/session-status":
             guard let sessionId = payload["sessionId"]?.stringValue,
                   case let .bool(running)? = payload["running"] else { return }
+            let wasRunning = sessions.first { $0.sessionId == sessionId }?.running
             sessions = sessions.map { summary in
                 guard summary.sessionId == sessionId else { return summary }
                 return SessionSummary(
@@ -361,6 +380,12 @@ final class AppStore {
                 )
             }
             if sessionId == selectedSessionId, !running { isSending = false }
+            if wasRunning == true, !running {
+                notifications.notifyTurnEnded(
+                    sessionId: sessionId,
+                    selectedSessionId: selectedSessionId
+                )
+            }
         case "host/session-added":
             let list = try? await host.request(method: "session.list", payload: EmptyPayload(), as: SessionListValue.self)
             if let list { sessions = list.items }
@@ -517,9 +542,30 @@ final class AppStore {
         return text
     }
 
-    private func replacePending(_ interaction: PendingInteraction) {
+    @discardableResult
+    private func replacePending(_ interaction: PendingInteraction) -> Bool {
+        let inserted = !pendingInteractions.contains { $0.id == interaction.id }
         pendingInteractions.removeAll { $0.id == interaction.id }
         pendingInteractions.append(interaction)
+        syncPendingInteractionBadge()
+        return inserted
+    }
+
+    private func syncPendingInteractionBadge() {
+        notifications.setPendingInteractionCount(pendingInteractions.count)
+    }
+
+    private func resetPendingInteractions() {
+        for interaction in pendingInteractions {
+            switch interaction {
+            case let .approval(approval):
+                notifications.removeApproval(approvalId: approval.approvalId)
+            case let .question(question):
+                notifications.removeQuestion(rpcId: question.rpcId)
+            }
+        }
+        pendingInteractions = []
+        syncPendingInteractionBadge()
     }
 
     static func approval(rpcId: String, payload: [String: JSONValue]) -> PendingApproval? {
