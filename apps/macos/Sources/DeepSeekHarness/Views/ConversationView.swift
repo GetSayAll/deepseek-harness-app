@@ -183,10 +183,11 @@ private struct MessageView: View {
     var body: some View {
         if message.role == .user {
             HStack(alignment: .top, spacing: 12) {
-                Spacer(minLength: 72)
+                Spacer(minLength: 0)
                 messageBody
                 avatar
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         } else {
             HStack(alignment: .top, spacing: 12) {
                 avatar
@@ -200,20 +201,33 @@ private struct MessageView: View {
             Text(message.role == .assistant ? "DS Harness" : "你")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(message.role == .assistant ? DSTheme.textPrimary : DSTheme.textSecondary)
-            Text(markdown)
-                .font(.system(size: 15))
-                .foregroundStyle(DSTheme.textPrimary)
-                .textSelection(.enabled)
-                .lineSpacing(5)
-                .padding(message.role == .user ? 12 : 0)
-                .background(message.role == .user ? DSTheme.selectionFill : .clear)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: .leading)
+            if message.role == .user {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    messageText
+                }
+                .frame(maxWidth: 525)
+            } else {
+                messageText
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if message.streaming {
                 ProgressView().controlSize(.small).tint(DSTheme.brandHighlight)
             }
         }
         .frame(maxWidth: message.role == .user ? 525 : .infinity, alignment: message.role == .user ? .trailing : .leading)
+    }
+
+    private var messageText: some View {
+        Text(markdown)
+            .font(.system(size: 15))
+            .foregroundStyle(DSTheme.textPrimary)
+            .textSelection(.enabled)
+            .lineSpacing(5)
+            .padding(message.role == .user ? 12 : 0)
+            .background(message.role == .user ? DSTheme.selectionFill : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder

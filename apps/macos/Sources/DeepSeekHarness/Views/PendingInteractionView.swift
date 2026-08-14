@@ -121,6 +121,7 @@ private struct QuestionView: View {
                     }
                 }
                 .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: 236)
 
@@ -155,10 +156,13 @@ private struct QuestionView: View {
                     .foregroundStyle(DSTheme.textSecondary)
             }
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 10)], spacing: 10) {
-                ForEach(question.options) { option in
-                    optionButton(option, question: question)
+            if !question.options.isEmpty {
+                LazyVGrid(columns: optionColumns(for: question), spacing: 10) {
+                    ForEach(question.options) { option in
+                        optionButton(option, question: question)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
 
             TextField(question.options.isEmpty ? "请输入回答" : "补充说明（可选）", text: customBinding(question), axis: .vertical)
@@ -171,9 +175,18 @@ private struct QuestionView: View {
                 .disabled(busy || draft(question).skipped)
 
             Toggle("跳过这个问题", isOn: skippedBinding(question))
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .font(.system(size: 12))
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(busy)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func optionColumns(for question: PendingQuestion.Question) -> [GridItem] {
+        let columnCount = min(max(question.options.count, 1), 3)
+        return Array(repeating: GridItem(.flexible(minimum: 170), spacing: 10), count: columnCount)
     }
 
     private func optionButton(_ option: PendingQuestion.Question.Option, question: PendingQuestion.Question) -> some View {
