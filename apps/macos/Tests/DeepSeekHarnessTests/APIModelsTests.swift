@@ -88,6 +88,28 @@ final class APIModelsTests: XCTestCase {
         XCTAssertThrowsError(try AppStore.normalizedAPIKey("   "))
     }
 
+    func testAgentPresetUpdateRechecksSessionIdAfterListChanges() {
+        let first = SessionSummary(
+            sessionId: "first", updatedAt: 1, running: false, blank: true, cwd: nil,
+            agentPreset: nil, projections: nil
+        )
+        let target = SessionSummary(
+            sessionId: "target", updatedAt: 2, running: false, blank: true, cwd: nil,
+            agentPreset: nil, projections: nil
+        )
+        var sessions = [target, first]
+
+        AppStore.applyAgentPreset("research", to: &sessions, sessionId: "target")
+
+        XCTAssertEqual(sessions.first?.sessionId, "target")
+        XCTAssertEqual(sessions.first?.agentPreset, "research")
+        XCTAssertNil(sessions.last?.agentPreset)
+
+        AppStore.applyAgentPreset("missing", to: &sessions, sessionId: "absent")
+        XCTAssertEqual(sessions.first?.agentPreset, "research")
+        XCTAssertNil(sessions.last?.agentPreset)
+    }
+
     private func decode(_ json: String) throws -> JSONValue {
         try JSONDecoder().decode(JSONValue.self, from: Data(json.utf8))
     }
